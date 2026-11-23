@@ -1,14 +1,30 @@
-// Local OpenAI-compatible adapter for Vertex Gemini 4 Argon.
-// The QQbot talks only to 127.0.0.1; this process owns the Vertex REST mapping.
+// Local OpenAI-compatible multi-model adapter for Gemini 4 (AI Studio & Vertex AI ADC).
+// Binds strictly to 127.0.0.1; owns request translation, effort clamping, and per-call USD/CNY ledger tracking.
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { createVertexAuthProvider } = require("./gemini-auth.cjs");
 
-// Node's built-in fetch does not inherit the Windows system proxy. Clash
-// Verge is the local egress used by this machine, so use an Undici dispatcher
-// when a proxy is configured (or when the standard Clash port is listening).
+// Auto-load `.env` without external dependencies (never overwrites already-set env vars)
+(function loadGatewayDotEnv() {
+  try {
+    const envPath = path.resolve(process.env.NUOMU_ENV_FILE || path.join(process.cwd(), ".env"));
+    if (!fs.existsSync(envPath)) return;
+    for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq <= 0) continue;
+      const k = trimmed.slice(0, eq).trim();
+      let v = trimmed.slice(eq + 1).trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+      if (!(k in process.env) || !String(process.env[k] || "").trim()) process.env[k] = v;
+    }
+  } catch {}
+})();
+
+// Optional outbound HTTP proxy support via undici ProxyAgent (falls back to native Node fetch when unset)
 let ProxyAgent;
 let undiciFetch = globalThis.fetch;
 try {
@@ -18,6 +34,7 @@ try {
 } catch {}
 
 const ROOT = path.resolve(process.env.NUOMU_ROOT || process.cwd());
+const DATA_DIR = path.resolve(process.env.NUOMU_DATA_DIR || path.join(ROOT, "data"));
 const PORT = Number(process.env.NUOMU_VERTEX_PORT || 3478);
 const HOST = "127.0.0.1";
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || "your-gcp-project-id";
@@ -30,7 +47,7 @@ const GEMINI4_MODELS = {
   "gemini-4-argon": { tiers: ["LOW", "MEDIUM", "HIGH"], maxOutputTokens: 32768, usdPerM: { input: 2.0, cached: 0.2, output: 10.0 } },
 };
 const CNY_PER_USD = 7.2;
-const GATEWAY_USAGE_PATH = path.join(ROOT, "data", "state", "gateway-usage.jsonl");
+const GATEWAY_USAGE_PATH = path.join(DATA_DIR, "state", "gateway-usage.jsonl");
 const MAX_BODY = 8 * 1024 * 1024;
 
 function computeGatewayCost(modelId, usage) {
@@ -87,7 +104,7 @@ function resolveThinkingLevel(requestedEffort, modelId) {
 }
 const TIMEOUT_MS = 300000;
 const LOG_PATH = path.join(ROOT, "logs", "vertex-gateway.log");
-const PID_PATH = path.join(ROOT, "data", "state", "vertex-gateway.pid");
+const PID_PATH = path.join(DATA_DIR, "state", "vertex-gateway.pid");
 const thoughtSignatures = new Map();
 
 function log(message) {

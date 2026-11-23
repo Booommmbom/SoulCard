@@ -10,7 +10,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { createInterface } from "node:readline/promises";
+import { createInterface } from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 import {
@@ -134,8 +134,52 @@ function parseCliArgs(argv) {
   return opts;
 }
 
+function createPromptReader() {
+  const rl = createInterface({
+    input,
+    output: input.isTTY ? output : undefined,
+    terminal: Boolean(input.isTTY),
+  });
+  const queue = [];
+  const waiters = [];
+  let closed = false;
+
+  rl.on("line", (line) => {
+    if (waiters.length > 0) waiters.shift()(line);
+    else queue.push(line);
+  });
+  rl.on("close", () => {
+    closed = true;
+    while (waiters.length > 0) waiters.shift()("");
+  });
+
+  return {
+    async question(promptText) {
+      output.write(promptText);
+      if (queue.length > 0) {
+        const val = queue.shift();
+        if (!input.isTTY) output.write("\n");
+        return val;
+      }
+      if (closed) {
+        if (!input.isTTY) output.write("\n");
+        return "";
+      }
+      return await new Promise((resolveAns) => {
+        waiters.push((val) => {
+          if (!input.isTTY) output.write("\n");
+          resolveAns(val);
+        });
+      });
+    },
+    close() {
+      rl.close();
+    },
+  };
+}
+
 async function runInteractiveWizard(envPath) {
-  const rl = createInterface({ input, output });
+  const rl = createPromptReader();
   try {
     console.log("\n==============================================================");
     console.log("  Nuomu Soul 一键配置向导 / Universal Relay Setup Wizard");
@@ -256,7 +300,7 @@ async function runInteractiveWizard(envPath) {
   }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
 if (isMain) {
   const args = parseCliArgs(process.argv.slice(2));
   if (args.help) {

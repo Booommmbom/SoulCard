@@ -14,13 +14,15 @@ import {
   scoreEvalReply,
   summarizeEvalRun,
 } from "../core/eval-benchmark.mjs";
-import { callUnifiedLlm, resolveLlmConfig } from "./llm-client.mjs";
+import { callUnifiedLlm, loadDotEnv, resolveLlmConfig } from "./llm-client.mjs";
 
+loadDotEnv();
 const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
 const DEFAULT_DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const DEFAULT_AI_KEYS_PATH = resolve(process.env.NUOMU_ENV_FILE || join(process.cwd(), ".env"));
-const DEFAULT_OUT_DIR = resolve(process.env.NUOMU_EVAL_DIR || join(process.cwd(), "data", "state", "eval-reports"));
+const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
+const DEFAULT_OUT_DIR = resolve(process.env.NUOMU_EVAL_DIR || join(DEFAULT_DATA_DIR, "state", "eval-reports"));
 
 const USD_RATES = {
   "gemini-4-neon": { input: 3.0, output: 15.0 },

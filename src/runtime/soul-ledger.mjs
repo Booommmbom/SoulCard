@@ -20,8 +20,9 @@ import {
   shouldRunMonthlyAutobiography,
   validateSoulLedgerPayload,
 } from "../core/growth-evolution.mjs";
-import { callUnifiedLlm, resolveLlmConfig } from "./llm-client.mjs";
+import { callUnifiedLlm, loadDotEnv, resolveLlmConfig } from "./llm-client.mjs";
 
+loadDotEnv();
 const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
 const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
@@ -232,7 +233,7 @@ async function callMonthlyLlm(messages, {
     if (unified.ok && unified.content) {
       return {
         ok: true,
-        provider: `${unified.provider}:${unified.protocol}`,
+        provider: `${resolved.source}:${unified.protocol}`,
         model: unified.model,
         effort,
         content: unified.content,
