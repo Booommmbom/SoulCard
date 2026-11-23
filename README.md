@@ -21,7 +21,7 @@ Most AI companion stacks fail in three predictable ways:
 2. **Temporal Blindness & Continuation Bias**: Replaying 3-hour-old chat bubbles makes Transformers obsessively continue stale actions ("Did you finish your shower yet?" at midnight) while burning 50%–80% extra tokens.
 3. **Vendor Lock-In**: When a better base model arrives next year, years of lived context are trapped inside proprietary chat logs or model weights.
 
-**Nuomu Soul** solves this with **13 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO) plus portable runtime orchestrators (`src/runtime/`) and a multi-model local gateway (`src/gateway/`).
+**Nuomu Soul** solves this with **14 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO) plus a **Universal Relay & Multi-Protocol Adapter** (`npm run setup`), portable runtime orchestrators (`src/runtime/`), and a multi-model local gateway (`src/gateway/`).
 
 ---
 
@@ -58,6 +58,7 @@ flowchart TD
 | **DMN Inner Life & Polite Presence** | [`inner-life.mjs`](./src/core/inner-life.mjs), [`ambient-presence.mjs`](./src/core/ambient-presence.mjs) | Date-anchored 5-slot circadian daily rhythm + 6-layer anti-intrusion check-in gates (never interrupts typing, active chats, or quiet hours; weaves un-nudged diary `openLoops` naturally). |
 | **Portable Soul Ledger (`v1`)** | [`soul-ledger.mjs`](./src/runtime/soul-ledger.mjs) | Lossless round-trip export & validated merge/restore of diaries, milestones, monthly chapters, retired habits, and schemas across machines or base models. |
 | **16-Case Golden Replay Benchmark** | [`eval-benchmark.mjs`](./src/core/eval-benchmark.mjs), [`eval-runner.mjs`](./src/runtime/eval-runner.mjs) | Objective 4-dimension benchmark (`Timeline`, `De-AI`, `Autonomy`, `Memory Honesty`) tracking `Question-Ending Rate` and novel-style `RP Stage-Direction` leaks. |
+| **Universal Relay & Multi-Protocol Adapter** | [`provider-compat.mjs`](./src/core/provider-compat.mjs), [`setup-wizard.mjs`](./src/runtime/setup-wizard.mjs) | Beginner-friendly `npm run setup` interactive wizard: paste **any** relay URL (bare domain, `/v1`, `/api/v3`, `/compatible-mode/v1`, `/v1/chat/completions`, `/v1/messages`, `:generateContent`, or local Ollama/LM Studio) & API key (auto-cleans `Bearer `/quotes), auto-discovers models via `/v1/models`, auto-retries relays that reject `response_format`, and runs a 5-token live connectivity check — **no VPN or foreign console required**. |
 | **Multi-Model Gemini 4 Gateway** | [`gemini-gateway.cjs`](./src/gateway/gemini-gateway.cjs), [`gemini-auth.cjs`](./src/gateway/gemini-auth.cjs) | Zero-dependency OpenAI-compatible local gateway supporting **Google AI Studio (`x-goog-api-key`)** & **Vertex AI ADC (`authorized_user` / `service_account` JWT)**, dynamic routing for **Gemini 4 Neon / Hydrogen (4 tiers: `LOW/MEDIUM/HIGH/MAX`)** & **Carbon / Argon (3 tiers)**, and per-call USD/CNY ledger tracking. |
 
 ---
@@ -127,28 +128,49 @@ const plan = computeHumanPacingPlan({
 
 ---
 
-## Running Live Consolidation, Gateway & Benchmarks
+## Connect Any Relay, Domestic API, or Local Model (`npm run setup`)
 
-Copy `.env.example` to `.env` and fill the provider(s) you want:
+No overseas website access or VPN required. Run the interactive wizard once and paste **any** relay station URL (NewAPI / One-API / SiliconFlow / DeepSeek / DashScope / Volcengine Ark / Moonshot / Zhipu / OpenRouter / Anthropic / Gemini / local Ollama or LM Studio) + your API key:
 
 ```bash
-cp .env.example .env
+# Interactive setup wizard: paste URL + Key -> auto-detect protocol -> discover models -> live ping -> save .env
+npm run setup
 
-# Start local OpenAI-compatible Gemini 4 multi-model gateway on 127.0.0.1:3478
-npm run gateway
+# Or one-line non-interactive setup:
+node src/runtime/setup-wizard.mjs --url https://your-relay.com --key sk-xxx --model deepseek-chat
+```
+
+**Supported URL Shapes (Auto-Normalized — Paste Whatever Your Relay Gives You):**
+
+| What You Paste | Auto-Detected Protocol | Auto-Resolved Endpoint |
+| :--- | :---: | :--- |
+| `your-relay.com` or `https://your-relay.com/` | `openai` | `https://your-relay.com/v1/chat/completions` |
+| `https://your-relay.com/v1` | `openai` | `https://your-relay.com/v1/chat/completions` |
+| `https://your-relay.com/v1/chat/completions` | `openai` | Used as-is (zero duplication) |
+| `https://ark.cn-beijing.volces.com/api/v3` / `.../api/paas/v4` / `.../compatible-mode/v1` | `openai` | Appends `/chat/completions` without duplicating `/v1` |
+| `https://your-relay.com/v1/messages` | `anthropic` | `x-api-key` + Anthropic Messages payload |
+| `https://your-relay.com/v1beta/models/<model>:generateContent` | `gemini` | `x-goog-api-key` + Gemini REST payload |
+| `http://127.0.0.1:11434` / `http://127.0.0.1:1234/v1` | `ollama` / `openai` | Offline local Ollama / LM Studio / vLLM (`$0.00`) |
+
+Once `.env` is saved (strictly gitignored), every runtime workflow works automatically through your relay:
+
+```bash
+# Run 4-case quick benchmark against your configured relay model
+npm run eval -- --limit 4
 
 # Run nightly episode consolidation & authentic first-person diary
-node src/runtime/daily-consolidate.mjs --date 2026-11-22 --model gemini-4-hydrogen --effort low
+npm run consolidate:daily
 
 # Run weekly developmental milestone reflection & stale habit retirement
-node src/runtime/weekly-growth.mjs --model gemini-4-hydrogen --effort low
+npm run consolidate:weekly
 
-# Export / restore Portable Soul Ledger v1 (model-agnostic JSON + Markdown)
-node src/runtime/soul-ledger.mjs export
-node src/runtime/soul-ledger.mjs import --file ./data/state/soul-ledger-export.json --mode merge
+# Run L3 monthly autobiography & Portable Soul Ledger export / restore
+npm run consolidate:monthly
+npm run soul:export
+npm run soul:import -- --file ./data/state/soul-ledger-export.json --mode merge
 
-# Run 16-case Golden Replay cross-model benchmark
-node src/runtime/eval-runner.mjs --models deepseek:deepseek-chat,gemini-4-hydrogen:low --limit 16
+# (Optional) Start local OpenAI-compatible multi-model Gemini 4 gateway on 127.0.0.1:3478
+npm run gateway
 ```
 
 ---

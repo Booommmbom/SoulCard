@@ -20,6 +20,7 @@ import {
   shouldRunMonthlyAutobiography,
   validateSoulLedgerPayload,
 } from "../core/growth-evolution.mjs";
+import { callUnifiedLlm, resolveLlmConfig } from "./llm-client.mjs";
 
 const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
 const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
@@ -200,23 +201,54 @@ export function importSoulLedger({ dataDir = DEFAULT_DATA_DIR, filePath, mode = 
 }
 
 async function callMonthlyLlm(messages, {
-  model = DEFAULT_MODEL,
+  model = "",
   effort = DEFAULT_EFFORT,
+  baseUrl = "",
+  apiKey = "",
+  protocol = "auto",
   gatewayUrl = DEFAULT_GATEWAY_URL,
   ollamaUrl = DEFAULT_OLLAMA_URL,
   fetchFn = globalThis.fetch,
 } = {}) {
-  const isOllama = String(model).startsWith("ollama:");
+  const eff = String(effort || "low").toLowerCase();
+  const maxTokens = eff === "max" ? 16384 : eff === "high" ? 8192 : 4096;
+  const timeoutMs = eff === "max" ? 180_000 : 120_000;
+
+  const resolved = resolveLlmConfig({ baseUrl, apiKey, model, protocol });
+  const isOllama = String(model || "").startsWith("ollama:");
+  if (!isOllama && (baseUrl || ["relay", "deepseek", "anthropic", "gemini", "openai"].includes(resolved.source))) {
+    const unified = await callUnifiedLlm(messages, {
+      baseUrl: baseUrl || resolved.baseUrl,
+      apiKey: apiKey || resolved.apiKey,
+      model: model || resolved.model,
+      protocol: protocol !== "auto" ? protocol : resolved.protocol,
+      temperature: 0.5,
+      maxTokens,
+      jsonMode: true,
+      timeoutMs,
+      extraHeaders: { "x-nuomu-caller": "monthly-growth" },
+      fetchFn,
+    });
+    if (unified.ok && unified.content) {
+      return {
+        ok: true,
+        provider: `${unified.provider}:${unified.protocol}`,
+        model: unified.model,
+        effort,
+        content: unified.content,
+        usage: unified.usage,
+      };
+    }
+  }
+
+  const gatewayModel = model || DEFAULT_MODEL;
   if (!isOllama) {
-    const eff = String(effort || "low").toLowerCase();
-    const maxTokens = eff === "max" ? 16384 : eff === "high" ? 8192 : 4096;
-    const timeoutMs = eff === "max" ? 180_000 : 120_000;
     try {
       const res = await fetchFn(gatewayUrl, {
         method: "POST",
         headers: { "content-type": "application/json", "x-nuomu-caller": "monthly-growth" },
         body: JSON.stringify({
-          model,
+          model: gatewayModel,
           reasoning_effort: effort,
           max_tokens: maxTokens,
           temperature: 0.5,
@@ -233,7 +265,7 @@ async function callMonthlyLlm(messages, {
           return {
             ok: true,
             provider: "nuomu-vertex-gateway",
-            model: data?.model || model,
+            model: data?.model || gatewayModel,
             effort,
             content,
             usage: data?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
@@ -314,8 +346,11 @@ export async function runMonthlyAutobiography(options = {}) {
   }
 
   const llm = await callMonthlyLlm(messages, {
-    model,
+    model: options.model || "",
     effort,
+    baseUrl: options.baseUrl || "",
+    apiKey: options.apiKey || "",
+    protocol: options.protocol || "auto",
     gatewayUrl: options.gatewayUrl || DEFAULT_GATEWAY_URL,
     ollamaUrl: options.ollamaUrl || DEFAULT_OLLAMA_URL,
     fetchFn: options.fetchFn || globalThis.fetch,
@@ -368,11 +403,17 @@ if (isMain) {
     const dryRun = argv.includes("--dry-run");
     const mIdx = argv.indexOf("--model");
     const eIdx = argv.indexOf("--effort");
+    const uIdx = argv.indexOf("--url");
+    const kIdx = argv.indexOf("--key");
+    const pIdx = argv.indexOf("--protocol");
     console.log(JSON.stringify(await runMonthlyAutobiography({
       force,
       dryRun,
-      model: mIdx !== -1 ? argv[mIdx + 1] : DEFAULT_MODEL,
+      model: mIdx !== -1 ? argv[mIdx + 1] : "",
       effort: eIdx !== -1 ? argv[eIdx + 1] : DEFAULT_EFFORT,
+      baseUrl: uIdx !== -1 ? argv[uIdx + 1] : "",
+      apiKey: kIdx !== -1 ? argv[kIdx + 1] : "",
+      protocol: pIdx !== -1 ? argv[pIdx + 1] : "auto",
     }), null, 2));
   } else {
     console.log(JSON.stringify({ ok: false, error: `unknown subcommand: ${cmd} (use export | import | monthly)` }));

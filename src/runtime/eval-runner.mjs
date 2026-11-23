@@ -14,6 +14,7 @@ import {
   scoreEvalReply,
   summarizeEvalRun,
 } from "../core/eval-benchmark.mjs";
+import { callUnifiedLlm, resolveLlmConfig } from "./llm-client.mjs";
 
 const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
@@ -57,7 +58,14 @@ function estimateUsd(model, usage) {
   return Math.round(((p * r.input + c * r.output) / 1_000_000) * 1_000_000) / 1_000_000;
 }
 
-async function runSingleCase(modelSpec, scenario, { gatewayUrl = DEFAULT_GATEWAY_URL, ollamaUrl = DEFAULT_OLLAMA_URL, fetchFn = globalThis.fetch } = {}) {
+async function runSingleCase(modelSpec, scenario, {
+  baseUrl = "",
+  apiKey = "",
+  protocol = "auto",
+  gatewayUrl = DEFAULT_GATEWAY_URL,
+  ollamaUrl = DEFAULT_OLLAMA_URL,
+  fetchFn = globalThis.fetch,
+} = {}) {
   const t0 = Date.now();
   const messages = [
     { role: "system", content: `${NUOMU_EVAL_SYSTEM}\n\n【当前场景参考】\n${scenario.context}` },
@@ -68,7 +76,28 @@ async function runSingleCase(modelSpec, scenario, { gatewayUrl = DEFAULT_GATEWAY
   let usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
   let estimatedUsd = 0;
 
-  if (modelSpec.startsWith("ollama:")) {
+  const isLocalGatewaySpec = /^gemini-4-(?:neon|hydrogen|carbon|argon)(?::|$)/i.test(modelSpec) && !baseUrl;
+  const resolved = resolveLlmConfig({ baseUrl, apiKey, protocol });
+
+  if (modelSpec.startsWith("relay:") || (!modelSpec.startsWith("ollama:") && !modelSpec.startsWith("deepseek:") && !isLocalGatewaySpec && (baseUrl || ["relay", "anthropic", "gemini", "openai", "deepseek"].includes(resolved.source)))) {
+    const relayModel = modelSpec.startsWith("relay:") ? modelSpec.slice("relay:".length) : modelSpec;
+    const res = await callUnifiedLlm(messages, {
+      baseUrl: baseUrl || resolved.baseUrl,
+      apiKey: apiKey || resolved.apiKey,
+      model: relayModel || resolved.model,
+      protocol: protocol !== "auto" ? protocol : resolved.protocol,
+      temperature: 0.7,
+      maxTokens: 1024,
+      jsonMode: false,
+      timeoutMs: 60_000,
+      extraHeaders: { "x-nuomu-caller": "eval-benchmark" },
+      fetchFn,
+    });
+    if (!res.ok) throw new Error(res.error || `relay HTTP ${res.status}`);
+    reply = res.content;
+    usage = res.usage || usage;
+    estimatedUsd = estimateUsd(relayModel, usage);
+  } else if (modelSpec.startsWith("ollama:")) {
     const ollamaModel = modelSpec.slice("ollama:".length);
     const res = await fetchFn(ollamaUrl, {
       method: "POST",
@@ -145,20 +174,29 @@ async function runSingleCase(modelSpec, scenario, { gatewayUrl = DEFAULT_GATEWAY
 }
 
 export async function runEvalBenchmark({
-  models = ["gemini-4-hydrogen:low"],
+  models = null,
   limit = GOLDEN_EVAL_SCENARIOS.length,
   dryRun = false,
+  baseUrl = "",
+  apiKey = "",
+  protocol = "auto",
   outDir = DEFAULT_OUT_DIR,
   gatewayUrl = DEFAULT_GATEWAY_URL,
   ollamaUrl = DEFAULT_OLLAMA_URL,
   fetchFn = globalThis.fetch,
 } = {}) {
+  const cfg = resolveLlmConfig({ baseUrl, apiKey, protocol });
+  const effectiveModels = Array.isArray(models) && models.length > 0
+    ? models
+    : (baseUrl || ["relay", "deepseek", "anthropic", "gemini", "openai"].includes(cfg.source)
+      ? [`relay:${cfg.model}`]
+      : ["gemini-4-hydrogen:low"]);
   const selected = GOLDEN_EVAL_SCENARIOS.slice(0, Math.max(1, Math.min(GOLDEN_EVAL_SCENARIOS.length, Number(limit) || 16)));
   if (dryRun) {
     return {
       ok: true,
       dryRun: true,
-      models,
+      models: effectiveModels,
       scenarioCount: selected.length,
       dimensions: ["timeline", "de_ai", "autonomy", "memory_honesty"],
     };
@@ -166,11 +204,11 @@ export async function runEvalBenchmark({
 
   const summaries = [];
   const detailRuns = [];
-  for (const modelSpec of models) {
+  for (const modelSpec of effectiveModels) {
     const items = [];
     for (const sc of selected) {
       try {
-        items.push(await runSingleCase(modelSpec, sc, { gatewayUrl, ollamaUrl, fetchFn }));
+        items.push(await runSingleCase(modelSpec, sc, { baseUrl, apiKey, protocol, gatewayUrl, ollamaUrl, fetchFn }));
       } catch (err) {
         items.push({
           scenarioId: sc.id,
@@ -202,11 +240,14 @@ export async function runEvalBenchmark({
 }
 
 function parseArgs(argv) {
-  const out = { models: ["gemini-4-hydrogen:low"], limit: 16, dryRun: false };
+  const out = { models: null, limit: 16, dryRun: false, baseUrl: "", apiKey: "", protocol: "auto" };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--models" && argv[i + 1]) out.models = argv[++i].split(",").map((s) => s.trim()).filter(Boolean);
     else if (a === "--limit" && argv[i + 1]) out.limit = Number(argv[++i]) || 16;
+    else if ((a === "--url" || a === "--base-url") && argv[i + 1]) out.baseUrl = argv[++i];
+    else if ((a === "--key" || a === "--api-key") && argv[i + 1]) out.apiKey = argv[++i];
+    else if (a === "--protocol" && argv[i + 1]) out.protocol = argv[++i];
     else if (a === "--dry-run") out.dryRun = true;
   }
   return out;

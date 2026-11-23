@@ -77,6 +77,6 @@ for (const file of files) {
   }
 }
 
-const ok = findings.length === 0 && coreFilesChecked >= 13;
+const ok = findings.length === 0 && coreFilesChecked >= 14;
 console.log(JSON.stringify({ ok, filesScanned: files.length, coreFilesChecked, findings }, null, 2));
 process.exit(ok ? 0 : 1);

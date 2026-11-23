@@ -19,6 +19,7 @@ import {
   shouldRunDailyConsolidation,
   summarizeDailyActivity,
 } from "../core/episode-consolidation.mjs";
+import { callUnifiedLlm, resolveLlmConfig } from "./llm-client.mjs";
 
 const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
 const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
@@ -71,23 +72,55 @@ function estimateCostCny(modelId, usage) {
 }
 
 async function callConsolidationLlm(messages, {
-  model = DEFAULT_MODEL,
+  model = "",
   effort = DEFAULT_EFFORT,
+  baseUrl = "",
+  apiKey = "",
+  protocol = "auto",
   gatewayUrl = DEFAULT_GATEWAY_URL,
   ollamaUrl = DEFAULT_OLLAMA_URL,
   fetchFn = globalThis.fetch,
 } = {}) {
-  const isOllama = String(model).startsWith("ollama:");
+  const eff = String(effort || "low").toLowerCase();
+  const maxTokens = eff === "max" ? 16384 : eff === "high" ? 8192 : 4096;
+  const timeoutMs = eff === "max" ? 180_000 : eff === "high" ? 120_000 : 90_000;
+
+  // 1. Universal Relay / Domestic / Multi-Protocol Adapter (auto-loaded from `.env` or CLI `--url`)
+  const resolved = resolveLlmConfig({ baseUrl, apiKey, model, protocol });
+  const isOllama = String(model || "").startsWith("ollama:");
+  if (!isOllama && (baseUrl || ["relay", "deepseek", "anthropic", "gemini", "openai"].includes(resolved.source))) {
+    const unified = await callUnifiedLlm(messages, {
+      baseUrl: baseUrl || resolved.baseUrl,
+      apiKey: apiKey || resolved.apiKey,
+      model: model || resolved.model,
+      protocol: protocol !== "auto" ? protocol : resolved.protocol,
+      temperature: 0.55,
+      maxTokens,
+      jsonMode: true,
+      timeoutMs,
+      extraHeaders: { "x-nuomu-caller": "daily-consolidate" },
+      fetchFn,
+    });
+    if (unified.ok && unified.content) {
+      return {
+        ok: true,
+        provider: `${unified.provider}:${unified.protocol}`,
+        model: unified.model,
+        effort,
+        content: unified.content,
+        usage: unified.usage,
+      };
+    }
+  }
+
+  const gatewayModel = model || DEFAULT_MODEL;
   if (!isOllama) {
-    const eff = String(effort || "low").toLowerCase();
-    const maxTokens = eff === "max" ? 16384 : eff === "high" ? 8192 : 4096;
-    const timeoutMs = eff === "max" ? 180_000 : eff === "high" ? 120_000 : 90_000;
     try {
       const res = await fetchFn(gatewayUrl, {
         method: "POST",
         headers: { "content-type": "application/json", "x-nuomu-caller": "daily-consolidate" },
         body: JSON.stringify({
-          model,
+          model: gatewayModel,
           reasoning_effort: effort,
           max_tokens: maxTokens,
           temperature: 0.55,
@@ -104,7 +137,7 @@ async function callConsolidationLlm(messages, {
           return {
             ok: true,
             provider: "nuomu-vertex-gateway",
-            model: data?.model || model,
+            model: data?.model || gatewayModel,
             effort,
             content,
             usage: data?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
@@ -233,8 +266,11 @@ export async function runDailyConsolidation(options = {}) {
   }
 
   const llm = await callConsolidationLlm(messages, {
-    model,
+    model: options.model || "",
     effort,
+    baseUrl: options.baseUrl || "",
+    apiKey: options.apiKey || "",
+    protocol: options.protocol || "auto",
     gatewayUrl: options.gatewayUrl || DEFAULT_GATEWAY_URL,
     ollamaUrl: options.ollamaUrl || DEFAULT_OLLAMA_URL,
     fetchFn: options.fetchFn || globalThis.fetch,
@@ -335,12 +371,15 @@ export function exportPortableSoulLedger({ dataDir = DEFAULT_DATA_DIR, now = Dat
 }
 
 function parseCliArgs(argv) {
-  const out = { dateKey: "", model: DEFAULT_MODEL, effort: DEFAULT_EFFORT, force: false, dryRun: false, exportSoul: false };
+  const out = { dateKey: "", model: "", effort: DEFAULT_EFFORT, baseUrl: "", apiKey: "", protocol: "auto", force: false, dryRun: false, exportSoul: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--date" && argv[i + 1]) out.dateKey = argv[++i];
     else if (a === "--model" && argv[i + 1]) out.model = argv[++i];
     else if (a === "--effort" && argv[i + 1]) out.effort = argv[++i];
+    else if ((a === "--url" || a === "--base-url") && argv[i + 1]) out.baseUrl = argv[++i];
+    else if ((a === "--key" || a === "--api-key") && argv[i + 1]) out.apiKey = argv[++i];
+    else if (a === "--protocol" && argv[i + 1]) out.protocol = argv[++i];
     else if (a === "--force") out.force = true;
     else if (a === "--dry-run") out.dryRun = true;
     else if (a === "--export-soul") out.exportSoul = true;

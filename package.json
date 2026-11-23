@@ -30,9 +30,11 @@
     "./core/reply-pacing": "./src/core/reply-pacing.mjs",
     "./core/fewshot-anchor": "./src/core/fewshot-anchor.mjs",
     "./core/core-session": "./src/core/core-session.mjs",
-    "./core/eval-benchmark": "./src/core/eval-benchmark.mjs"
+    "./core/eval-benchmark": "./src/core/eval-benchmark.mjs",
+    "./core/provider-compat": "./src/core/provider-compat.mjs"
   },
   "scripts": {
+    "setup": "node src/runtime/setup-wizard.mjs",
     "test": "node tests/run-all.mjs",
     "demo": "node examples/demo-soul-lifecycle.mjs",
     "audit:secrets": "node scripts/security-audit.mjs",

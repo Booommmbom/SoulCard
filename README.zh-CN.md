@@ -21,7 +21,7 @@
 2. **时间轴错乱与续写惯性**：隔了 3 小时再聊，Transformer 仍对着旧历史气泡强行续写（「水放了没？洗完澡没？」），既出戏又白烧 50%–80% 无效上下文 Token。
 3. **厂商与模型绑死**：底模更新换代时，陪伴多年积累的记忆、默契与变化无法干净带走。
 
-**Nuomu Soul** 提供 **13 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**4 个跨平台运行时编排器**（`src/runtime/`）以及 **多模型 Gemini 4 本地网关**（`src/gateway/`），开箱即跑，无需 `npm install`。
+**Nuomu Soul** 提供 **14 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全协议中转站自适应层与一键配置向导（`npm run setup`）**、**4 个跨平台运行时编排器**（`src/runtime/`）以及 **多模型本地网关**（`src/gateway/`），开箱即跑，无需 `npm install`。
 
 ---
 
@@ -77,12 +77,49 @@ flowchart TD
 git clone https://github.com/Booommmbom/nuomu-soul.git
 cd nuomu-soul
 
-# 1. 一秒离线跑通 8 大认知支柱完整生命周期演示（无需 Key）
+# 1. 一秒离线跑通 8 大认知支柱完整生命周期演示（无需 Key，算法全在本地跑）
 npm run demo
 
 # 2. 运行全部单元测试 + 零泄密与纯核心层安全审计
 npm test
 npm run audit:secrets
+```
+
+---
+
+## 新手零门槛接入大模型：支持任意中转站 & 国内直连（无需访问海外官网）
+
+不需要折腾海外账号或代理，只要运行一条命令，按中文提示粘贴你的**中转站网址**和 **API Key** 即可自动配好：
+
+```bash
+# 一键交互式配置向导：粘贴中转站网址 + Key -> 自动识别协议 -> 自动拉取模型列表 -> 5-token 连通性自检 -> 写入 .env
+npm run setup
+
+# 也支持一行命令行直接写入：
+node src/runtime/setup-wizard.mjs --url https://你的中转站网址 --key sk-xxx --model deepseek-chat
+```
+
+**多维度兼容市面上几乎所有中转站与接口格式（随便粘，引擎自动补全不报错）：**
+
+| 你粘贴进来的网址格式 | 自动识别协议 | 引擎自动补全后的真实调用地址 |
+| :--- | :---: | :--- |
+| 裸域名 `api.xxx.com` 或 `https://api.xxx.com/` | `openai` | `https://api.xxx.com/v1/chat/completions` |
+| OpenAI 风格 `https://api.xxx.com/v1` | `openai` | `https://api.xxx.com/v1/chat/completions` |
+| 完整地址 `https://api.xxx.com/v1/chat/completions` | `openai` | 原样直用，绝不重复拼接 `/v1` |
+| 国内大厂直连（DeepSeek / 硅基流动 / 阿里云百炼 `/compatible-mode/v1` / 火山方舟 `/api/v3` / Kimi / 智谱 `/api/paas/v4`） | `openai` | 智能识别版本前缀，免梯直连 |
+| Anthropic 原生或中转 `https://xxx/v1/messages` | `anthropic` | 自动转换 `x-api-key` + Messages 格式 |
+| Gemini 原生或中转 `.../v1beta/models/<模型>:generateContent` | `gemini` | 自动转换 `x-goog-api-key` + REST 格式 |
+| 本地免费离线 `http://127.0.0.1:11434` / `127.0.0.1:1234/v1` | `ollama` / `openai` | Ollama / LM Studio / vLLM 零费用运行 |
+
+- **防呆细节**：API Key 自动清理复制时多带的空格、引号和 `Bearer ` 前缀；遇到老版本中转站不支持 `response_format: json_object` 报 400 时，引擎自动降级重试，不会卡死。
+- 配完 `.env` 后，下面所有真实工作流直接开跑：
+
+```bash
+npm run eval -- --limit 4      # 用你的中转站模型跑 4 题快速实测
+npm run consolidate:daily      # 每日情景打包 + 生成真实第一人称日记
+npm run consolidate:weekly     # 周度成长复盘 + 自动卸载旧规矩给 Prompt 减负
+npm run consolidate:monthly    # 生成 L3 月度成长自传
+npm run soul:export            # 导出可跨模型无损迁移的灵魂账本 v1
 ```
 
 ## 开源协议

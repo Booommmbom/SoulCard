@@ -10,6 +10,8 @@ import { runDailyConsolidation } from "../src/runtime/daily-consolidate.mjs";
 import { runWeeklyGrowthReflection } from "../src/runtime/weekly-growth.mjs";
 import { exportSoulLedger, importSoulLedger, runMonthlyAutobiography } from "../src/runtime/soul-ledger.mjs";
 import { runEvalBenchmark } from "../src/runtime/eval-runner.mjs";
+import { callUnifiedLlm, resolveLlmConfig } from "../src/runtime/llm-client.mjs";
+import { applySetupConfig, upsertDotEnvFile } from "../src/runtime/setup-wizard.mjs";
 
 const require = createRequire(import.meta.url);
 const { createVertexAuthProvider } = require("../src/gateway/gemini-auth.cjs");
@@ -39,6 +41,11 @@ await test("1. Unified SDK barrel exports all key pure functions cleanly", () =>
     "computeHumanPacingPlan",
     "evaluateAmbientCheckIn",
     "scoreEvalReply",
+    "normalizeBaseUrl",
+    "normalizeApiKey",
+    "resolveChatEndpoint",
+    "buildUnifiedChatRequest",
+    "parseUnifiedChatResponse",
   ]) {
     assert.equal(typeof sdk[fn], "function", `missing export: ${fn}`);
   }
@@ -261,4 +268,118 @@ await test("6. End-to-end Daily -> Weekly -> Monthly -> Soul Ledger Round-Trip &
   }
 });
 
-console.log(`\nALL ${passed}/6 TEST SUITES PASSED`);
+await test("7. Universal Relay & Multi-Protocol Adapter (all URL shapes, key cleanup, 4 protocols, JSON fallback & setup wizard)", async () => {
+  // A. Messy pasted URL normalization across all domestic & global relay shapes
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "api.relay.example.com" }).url, "https://api.relay.example.com/v1/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://api.relay.example.com/" }).url, "https://api.relay.example.com/v1/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://api.relay.example.com/v1/" }).url, "https://api.relay.example.com/v1/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://api.relay.example.com/v1/chat/completions" }).url, "https://api.relay.example.com/v1/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://ark.cn-beijing.volces.com/api/v3" }).url, "https://ark.cn-beijing.volces.com/api/v3/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" }).url, "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://open.bigmodel.cn/api/paas/v4" }).url, "https://open.bigmodel.cn/api/paas/v4/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "127.0.0.1:11434" }).url, "http://127.0.0.1:11434/api/chat");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "http://127.0.0.1:1234/v1" }).url, "http://127.0.0.1:1234/v1/chat/completions");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://relay.example.com/v1/messages" }).protocol, "anthropic");
+  assert.equal(sdk.resolveChatEndpoint({ baseUrl: "https://relay.example.com", protocol: "anthropic" }).url, "https://relay.example.com/v1/messages");
+  assert.equal(
+    sdk.resolveChatEndpoint({ baseUrl: "https://generativelanguage.googleapis.com", model: "gemini-2.5-flash" }).url,
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+  );
+
+  // B. Pasted API key sanitization
+  assert.equal(sdk.normalizeApiKey('  "Bearer test-key-12345" \n'), "test-key-12345");
+  assert.equal(sdk.normalizeApiKey("Authorization: Bearer test-key-999"), "test-key-999");
+
+  // C. Request & response translation across Anthropic, Gemini, Ollama & OpenAI
+  const antReq = sdk.buildUnifiedChatRequest({
+    baseUrl: "https://relay.example.com/v1/messages",
+    apiKey: "Bearer demo-ant-key",
+    model: "claude-sonnet-4-5",
+    messages: [{ role: "system", content: "sys" }, { role: "user", content: "hi" }],
+  });
+  assert.equal(antReq.headers["x-api-key"], "demo-ant-key");
+  assert.equal(antReq.body.system, "sys");
+  const antParsed = sdk.parseUnifiedChatResponse({ type: "message", model: "claude-sonnet-4-5", content: [{ type: "text", text: "hello from claude" }], usage: { input_tokens: 10, output_tokens: 5 } }, "anthropic");
+  assert.equal(antParsed.text, "hello from claude");
+  assert.equal(antParsed.usage.total_tokens, 15);
+
+  const gemReq = sdk.buildUnifiedChatRequest({
+    baseUrl: "https://relay.example.com",
+    protocol: "gemini",
+    apiKey: "demo-gem-key",
+    model: "gemini-2.5-flash",
+    jsonMode: true,
+    messages: [{ role: "system", content: "sys" }, { role: "user", content: "hi" }],
+  });
+  assert.equal(gemReq.headers["x-goog-api-key"], "demo-gem-key");
+  assert.equal(gemReq.body.generationConfig.responseMimeType, "application/json");
+  const gemParsed = sdk.parseUnifiedChatResponse({
+    candidates: [{ content: { parts: [{ text: "thinking...", thought: true }, { text: '{"ok":true}' }] } }],
+    usageMetadata: { promptTokenCount: 20, candidatesTokenCount: 8, totalTokenCount: 28 },
+  }, "gemini");
+  assert.equal(gemParsed.text, '{"ok":true}');
+
+  // D. Automatic JSON-mode 400 fallback retry on strict third-party relays
+  let callCount = 0;
+  const fallbackRes = await callUnifiedLlm([{ role: "user", content: "hi" }], {
+    baseUrl: "https://relay.example.com",
+    apiKey: "demo-relay-key",
+    model: "custom-model",
+    jsonMode: true,
+    fetchFn: async (_url, init) => {
+      callCount += 1;
+      const body = JSON.parse(init.body);
+      if (body.response_format) {
+        return { ok: false, status: 400, text: async () => "response_format unsupported" };
+      }
+      return { ok: true, json: async () => ({ choices: [{ message: { content: '{"ok":true}' } }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } }) };
+    },
+  });
+  assert.equal(callCount, 2);
+  assert.equal(fallbackRes.ok, true);
+  assert.equal(fallbackRes.content, '{"ok":true}');
+
+  // E. Setup wizard `.env` upsert + resolveLlmConfig + custom relay eval run
+  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-setup-"));
+  try {
+    const envPath = join(tmpDir, ".env");
+    writeFileSync(envPath, "# keep comment\nNUOMU_DATA_DIR=./custom-data\n", "utf8");
+    const setupRes = await applySetupConfig({
+      baseUrl: "relay.example.com/v1/",
+      apiKey: "Bearer demo-relay-token",
+      model: "deepseek-chat",
+      envPath,
+      runTest: true,
+      fetchFn: async (url, init) => {
+        assert.equal(url, "https://relay.example.com/v1/chat/completions");
+        assert.equal(init.headers.authorization, "Bearer demo-relay-token");
+        return { ok: true, json: async () => ({ choices: [{ message: { content: "OK" } }], usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 } }) };
+      },
+    });
+    assert.equal(setupRes.ok, true);
+    assert.equal(setupRes.testResult.ok, true);
+    upsertDotEnvFile(envPath, { LLM_MODEL: "qwen-plus" });
+    const cfg = resolveLlmConfig({ env: { LLM_BASE_URL: "https://relay.example.com/v1", LLM_API_KEY: "demo-relay-token", LLM_MODEL: "qwen-plus" } });
+    assert.equal(cfg.source, "relay");
+    assert.equal(cfg.model, "qwen-plus");
+
+    const relayEval = await runEvalBenchmark({
+      baseUrl: "relay.example.com",
+      apiKey: "demo-relay-token",
+      models: ["relay:qwen-plus"],
+      limit: 2,
+      outDir: join(tmpDir, "eval"),
+      fetchFn: async (url, init) => {
+        assert.equal(url, "https://relay.example.com/v1/chat/completions");
+        assert.equal(init.headers.authorization, "Bearer demo-relay-token");
+        return { ok: true, json: async () => ({ choices: [{ message: { content: "在呢，刚忙完回来就先靠着歇会儿，哈哈这猫一模一样。" } }], usage: { prompt_tokens: 50, completion_tokens: 20, total_tokens: 70 } }) };
+      },
+    });
+    assert.equal(relayEval.ok, true);
+    assert.equal(relayEval.summaries[0].modelLabel, "relay:qwen-plus");
+  } finally {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+console.log(`\nALL ${passed}/7 TEST SUITES PASSED`);
