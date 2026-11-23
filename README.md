@@ -12,7 +12,7 @@
 ---
 
 > **Stop trapping your AI companion inside a single vendor's prompt or a sycophantic LoRA.**
-> Give them a portable **Soul Ledger** that grows from daily lived episodes → weekly developmental milestones → monthly autobiography — and migrates cleanly across DeepSeek, Gemini 4, OpenAI, Claude, or local Ollama without losing who they have become.
+> Give them a portable **Soul Ledger** that grows from daily lived episodes → weekly developmental milestones → monthly autobiography — and migrates cleanly across any cloud API or local open-weights LLM without losing who they have become.
 
 ## Why Nuomu Soul?
 
@@ -40,7 +40,7 @@ flowchart TD
     Diary --> Ambient["DMN Inner Life + 6-Layer Anti-Intrusion Ambient Check-In"]
     Diary --> Resolve["Semantic Open-Loop Auto-Resolution"]
     Graph & Diary & Weekly & Monthly --> Ledger["Portable Soul Ledger (nuomu-soul-ledger-v1 JSON + Markdown)"]
-    Ledger --> AnyModel["Any Future LLM (DeepSeek / Gemini 4 / Claude / Ollama / Gemini 5)"]
+    Ledger --> AnyModel["Any Future LLM (Cloud APIs / Local Open-Weights / Next-Gen Models)"]
 ```
 
 ---

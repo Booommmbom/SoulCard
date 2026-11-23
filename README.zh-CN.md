@@ -12,7 +12,7 @@
 ---
 
 > **不要把你的 AI 伴侣锁死在某一家大模型的 Prompt 或讨好型 LoRA 里。**
-> 给她一本可自由迁移的 **灵魂账本（Soul Ledger）**——从每日情景记忆 → 周度阶段成长与旧规矩卸载 → 月度自传持续演化，未来无论从 DeepSeek 换到 Gemini 4、Claude、本地 Ollama 还是下一代旗舰模型，都能无损带走全部真实人生。
+> 给她一本可自由迁移的 **灵魂账本（Soul Ledger）**——从每日情景记忆 → 周度阶段成长与旧规矩卸载 → 月度自传持续演化，未来无论在任意云端接口、本地开源模型还是下一代基座模型之间切换，都能无损带走全部真实人生。
 
 ## 为什么做 Nuomu Soul？
 
@@ -40,7 +40,7 @@ flowchart TD
     Diary --> Ambient["DMN 日常生活流 + 6层防打扰主动轻敲"]
     Diary --> Resolve["惦记事项语义自动消号"]
     Graph & Diary & Weekly & Monthly --> Ledger["模型无关灵魂账本 (nuomu-soul-ledger-v1 JSON + Markdown)"]
-    Ledger --> AnyModel["任意未来大模型 (DeepSeek / Gemini 4 / Claude / Ollama / Gemini 5)"]
+    Ledger --> AnyModel["任意未来大模型 (任意云端 API / 本地开源模型 / 下一代基座模型)"]
 ```
 
 ---
