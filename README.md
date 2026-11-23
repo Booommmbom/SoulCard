@@ -188,3 +188,15 @@ npm run gateway
 Contributions, new benchmark scenarios, language adapters, and provider gateways are very welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Released under the [MIT License](./LICENSE).
+
+---
+
+## ⭐ Support & Star
+
+If **Nuomu Soul** gave you fresh ideas for building AI companions with real memory, authentic growth, and zero vendor lock-in — or saved you hours fighting relay URLs and prompt bloat — **please consider giving this repository a Star ⭐!**
+
+Every Star helps more indie developers and researchers discover the project, motivates us to keep open-sourcing more real-world benchmarks and cognitive modules, and brings us closer to AI companions whose memories truly belong to their users.
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/Booommmbom/nuomu-soul?style=social)](https://github.com/Booommmbom/nuomu-soul/stargazers)
+
+Feel free to **Watch** for upcoming releases, **Fork** to build your own companion, or open an **Issue / Discussion** anytime — thank you for stopping by! ✨

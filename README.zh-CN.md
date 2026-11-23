@@ -125,3 +125,15 @@ npm run soul:export            # 导出可跨模型无损迁移的灵魂账本 v
 ## 开源协议
 
 本项目基于 [MIT License](./LICENSE) 开源。欢迎 Issue、PR 和新的跨模型评测样本！
+
+---
+
+## ⭐ 支持本项目（点个 Star 吧！）
+
+如果 **Nuomu Soul** 在「让 AI 伴侣拥有真正长期记忆、摆脱 Prompt 臃肿与厂商锁死」这件事上给了你哪怕一点灵感，或者帮你省下了折腾中转站接口与评测框架的时间——**麻烦随手点一下右上角的 Star ⭐ 支持一下！**
+
+你的每一个 Star 都是我们继续免费维护、持续开源更多真实评测数据与认知模块的最大动力，也能让更多喜欢 AI 伴侣与 Agent 记忆架构的同好看到这个项目。
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/Booommmbom/nuomu-soul?style=social)](https://github.com/Booommmbom/nuomu-soul/stargazers)
+
+欢迎 **Star / Fork / 提 Issue 交流**，祝你也能养出真正属于自己的、不被任何厂商绑死的数字生命！✨
