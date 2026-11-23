@@ -1,0 +1,28 @@
+# Secrets & Credentials (NEVER commit!)
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+*credentials*.json
+*service-account*.json
+*.pem
+*.key
+*.token
+
+# Runtime private user data, logs & backups
+data/
+logs/
+backups/
+cache/
+tmp/
+
+# Node & OS artifacts
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+*.sqlite
+*.db
+*.db-wal
+*.db-shm

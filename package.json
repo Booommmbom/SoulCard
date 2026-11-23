@@ -1,0 +1,61 @@
+{
+  "name": "nuomu-soul",
+  "version": "1.0.0",
+  "description": "Model-agnostic long-term memory, developmental growth, and human-like presence engine for AI companions.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/Booommmbom/nuomu-soul#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Booommmbom/nuomu-soul.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Booommmbom/nuomu-soul/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./core/episode-consolidation": "./src/core/episode-consolidation.mjs",
+    "./core/growth-evolution": "./src/core/growth-evolution.mjs",
+    "./core/memory-graph": "./src/core/memory-graph-v2.mjs",
+    "./core/memory-cognition": "./src/core/memory-cognition.mjs",
+    "./core/emotion-pad": "./src/core/emotion-pad.mjs",
+    "./core/sleep-dream": "./src/core/sleep-dream.mjs",
+    "./core/timeline-sync": "./src/core/timeline-sync.mjs",
+    "./core/inner-life": "./src/core/inner-life.mjs",
+    "./core/ambient-presence": "./src/core/ambient-presence.mjs",
+    "./core/reply-pacing": "./src/core/reply-pacing.mjs",
+    "./core/fewshot-anchor": "./src/core/fewshot-anchor.mjs",
+    "./core/core-session": "./src/core/core-session.mjs",
+    "./core/eval-benchmark": "./src/core/eval-benchmark.mjs"
+  },
+  "scripts": {
+    "test": "node tests/run-all.mjs",
+    "demo": "node examples/demo-soul-lifecycle.mjs",
+    "audit:secrets": "node scripts/security-audit.mjs",
+    "gateway": "node src/gateway/gemini-gateway.cjs",
+    "consolidate:daily": "node src/runtime/daily-consolidate.mjs",
+    "consolidate:weekly": "node src/runtime/weekly-growth.mjs",
+    "consolidate:monthly": "node src/runtime/soul-ledger.mjs monthly",
+    "soul:export": "node src/runtime/soul-ledger.mjs export",
+    "soul:import": "node src/runtime/soul-ledger.mjs import",
+    "eval": "node src/runtime/eval-runner.mjs"
+  },
+  "keywords": [
+    "ai-companion",
+    "long-term-memory",
+    "knowledge-graph",
+    "bitemporal",
+    "hipporag",
+    "llm-agents",
+    "gemini",
+    "deepseek",
+    "ollama",
+    "memory-pyramid",
+    "soul-ledger",
+    "pad-emotion"
+  ]
+}
