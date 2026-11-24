@@ -187,6 +187,42 @@ npm run gateway
 
 ---
 
+## 🗺️ Roadmap — Memory · Effortless · Cost-Smart · Alive
+
+Our long-term north star is simple: **unbreakable memory, zero-friction setup, ultra-low token cost, and genuinely alive companionship** — without requiring expensive GPUs or trapping users inside any vendor.
+
+> Legend: `✅ Shipped & Tested` · `🚧 Near-Term` · `💡 Exploring / Not Yet Finalized (Feedback Welcome in Issues!)`
+
+### 1. Memory (Unbreakable, Portable & Honest)
+- ✅ 4-Layer Memory Pyramid (`L0` raw → `L1` 45m episodes → `L2` bi-temporal knowledge graph + HippoRAG PPR → `L3` monthly autobiography)
+- ✅ **Portable Future-Companion Memory Cards** (`.json` card pack + readable `.md` Memory Book, verbatim evidence lock, secret-leak blocking, cross-model merge restore)
+- ✅ Habit Retirement & Prompt Declutter (automatically unloads stale rules instead of bloating prompts)
+- 🚧 **Cloud Flagship Conflict Arbiter**: automatic bi-temporal contradiction adjudication (cleanly closing `valid_at / invalid_at` when plans or tastes change, so outdated facts never resurface)
+- 💡 **Optional Zero-VRAM Hybrid Retrieval Plugin**: pluggable SQLite `FTS5` + vector + cross-encoder reranker for power users with thousands of memories, while keeping the default zero-GPU pure-JS mode effortless for ordinary laptops
+- 💡 **Growth-Oriented Learning Loop (Exploring)**: separating *companion personal memories* from *experiential learning notebooks* (reading articles/books/notes, forming authentic personal tastes and social intuition rather than dry RAG summaries)
+
+### 2. Effortless & Fast (One-Click Lazy Experience)
+- ✅ Zero `npm install`, zero GPU, double-click [`start.bat`](./start.bat) / `./start.sh` / `npm start` auto-opening Web Studio
+- ✅ Cloud-first presets for **Claude, GPT, Gemini, Grok, DeepSeek, OpenRouter, SiliconFlow, Qwen, Kimi, GLM, Doubao & any relay** + native OneBot v11 bridge
+- 🚧 **1-Click Desktop App Installer & System Tray**: standalone Electron/Tauri packaged binary so non-developers don't even need to install Node.js
+- 💡 **Mobile-Friendly PWA & Plug-and-Play Channels (Exploring)**: responsive mobile web companion, Telegram / Discord / WeChat-compatible adapters, and optional end-to-end encrypted Memory Card cloud backup
+
+### 3. Cost-Smart (Maximum Intelligence Per Penny)
+- ✅ 60-minute physical timeline cutoff (cuts stale history tokens by **50%–80%** automatically) + cost-guarded nightly consolidation (`>= 6` msgs)
+- 🚧 **Smart Two-Tier Cloud Model Router**: automatically route casual daily banter to ultra-cheap fast models (e.g., DeepSeek / Flash / Hydrogen LOW at pennies per day) and escalate deep emotional turns, memory conflict arbitration, or reflection to flagship models (Claude / GPT / Gemini Pro/Neon / Grok)
+- 💡 **Prompt-Caching Layout Optimization & Monthly Budget Guardrails (Exploring)**: cache-friendly static prefix ordering (for Anthropic/OpenAI/Gemini prompt caching), per-day spend caps, and real-time cost dashboard inside Web Studio
+
+### 4. Alive & Human-Like (Presence, Voice & Agency)
+- ✅ 3D PAD continuous emotion dynamics, DMN daily inner life, anti-instant-bot multi-bubble pacing, 6-layer anti-intrusion check-ins, and 16-case golden replay benchmark
+- 🚧 **Renderer-Agnostic `AvatarBridge` Protocol (WebSocket/SSE)**: live streaming of PAD mood, speaking amplitude, and activity states to desktop avatars
+- 💡 **Desktop Avatar Evolution — Live2D → 3D MMD / VRM (Exploring)**: starting with a lightweight transparent Live2D desktop companion window synced with emotion & lip-sync, with a clean renderer interface planned for future 3D **MMD (`.pmx`/`.vmd`)** or **VRM** models
+- 💡 **Affordable Natural Voice & Expressive Audio (Exploring)**: pluggable TTS routing (free local VoiceStudio / Edge / cloud ElevenLabs / Fish Audio) with automatic audio caching and emotion tags
+- 💡 **Sandboxed Self-Control & Growth Boundaries (Exploring)**: allowing the companion to manage her own expressions, study desk/journal, and versioned growth proposals — strictly gated by automated regression checks and user approval on core boundaries
+
+*Have an idea or want to help shape an unexplored item? Open a GitHub Issue or PR — every voice helps decide what ships next!*
+
+---
+
 ## Architectural Invariants
 
 1. **Core Purity**: Every file under `src/core/` MUST have zero `node:fs`, `node:sqlite`, `node:http`, or network imports (`npm run audit:secrets` enforces this in CI).
