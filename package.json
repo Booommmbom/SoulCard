@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Model-agnostic long-term memory, developmental growth, and human-like presence engine for AI companions.",
   "type": "module",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "homepage": "https://github.com/Booommmbom/nuomu-soul#readme",
   "repository": {
     "type": "git",

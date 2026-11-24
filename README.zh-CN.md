@@ -4,7 +4,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](./package.json)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
 [![CI](https://github.com/Booommmbom/nuomu-soul/actions/workflows/ci.yml/badge.svg)](https://github.com/Booommmbom/nuomu-soul/actions/workflows/ci.yml)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
@@ -122,9 +122,10 @@ npm run consolidate:monthly    # 生成 L3 月度成长自传
 npm run soul:export            # 导出可跨模型无损迁移的灵魂账本 v1
 ```
 
-## 开源协议
+## ⚖️ 开源协议与免责说明
 
-本项目基于 [MIT License](./LICENSE) 开源。欢迎 Issue、PR 和新的跨模型评测样本！
+- **许可证**：本仓库原创代码、文档、评测用例与工具均采用 **[GNU GPL-3.0-or-later](./LICENSE)** 开源协议。欢迎学习、自用与提交 PR；**任何基于本项目代码的修改与二次分发，均须同样遵守 GPL-3.0-or-later 并开源对应代码**（禁止直接闭源商用套壳）。
+- **许可范围与免责**：本项目为独立、非官方的个人开源工程，与任何大模型厂商或中转平台无隶属、授权或背书关系；相关商标与模型权利归各自权利人所有。本仓库不收录任何密钥、模型权重或私人数据，详见 [LICENSE](./LICENSE) 末尾的「许可范围与免责说明」。如权利人认为本仓库存在任何不妥内容，欢迎通过 GitHub Issue 联系，我们将第一时间配合处理。
 
 ---
 
