@@ -7,6 +7,7 @@ import { buildDiaryContinuityHint } from "./episode-consolidation.mjs";
 import { buildGrowthMilestoneHint, buildMonthlyChapterHint } from "./growth-evolution.mjs";
 import { formatInnerLifeForPrompt, snapshotInnerLife } from "./inner-life.mjs";
 import { extractConceptTokens } from "./memory-cognition.mjs";
+import { formatMemoryCardsForPrompt, isSensitiveCardText, recallMemoryCards } from "./memory-cards.mjs";
 import { buildBiTemporalTriples, runPersonalizedPageRank } from "./memory-graph-v2.mjs";
 import { computeHumanPacingPlan } from "./reply-pacing.mjs";
 import { buildAntiQuestionStreakHint, formatClockTag, partitionWorkingHistory } from "./timeline-sync.mjs";
@@ -97,6 +98,8 @@ export function recallBiTemporalContext({
 export function shouldCaptureMemoryEvent(userText = "") {
   const s = String(userText ?? "").trim();
   if (s.length < 4) return false;
+  if (isSensitiveCardText(s)) return false;
+  if (/(?:开个?玩笑|骗你的|逗你玩|才怪|反话)/.test(s)) return false;
   return /(?:喜欢|讨厌|不爱|不再|戒了|正在做|在做|打算|准备|约定|说好|答应|下次|平时|最爱|过敏|害怕|工作|健身|练腿|拍照|修图|游戏|猫|狗|名字叫|叫我)/.test(s);
 }
 
@@ -110,6 +113,7 @@ export function assembleCompanionPrompt({
   persona = DEFAULT_PERSONA,
   pad = null,
   memoryEvents = [],
+  memoryCards = [],
   diaryEntries = [],
   milestones = [],
   monthlyChapters = [],
@@ -134,6 +138,10 @@ export function assembleCompanionPrompt({
   // 3. Bi-temporal knowledge graph + HippoRAG PPR recall
   const graph = recallBiTemporalContext({ userText, memoryEvents, now, topK: 5 });
 
+  // 3b. Portable Memory Cards recall (pinned anchors + query-matched cards)
+  const recalledCards = recallMemoryCards(memoryCards, userText, { topK: 5, alwaysIncludePinned: 3 });
+  const cardsBlock = formatMemoryCardsForPrompt(recalledCards);
+
   // 4. Hierarchical continuity hints (Daily -> Weekly -> Monthly)
   const diaryHint = buildDiaryContinuityHint(diaryEntries, { now, resolvedKeys: resolvedOpenLoopKeys });
   const weeklyHint = buildGrowthMilestoneHint(milestones);
@@ -154,12 +162,13 @@ export function assembleCompanionPrompt({
   if (timeline.pastContextSummary) {
     systemSections.push(timeline.pastContextSummary);
   }
+  if (cardsBlock) systemSections.push(cardsBlock);
   if (monthlyHint) systemSections.push(monthlyHint);
   if (weeklyHint) systemSections.push(weeklyHint);
   if (diaryHint) systemSections.push(diaryHint);
   if (graph.promptBlock) {
     systemSections.push(graph.promptBlock);
-  } else if (memoryEvents.length === 0 && diaryEntries.length === 0) {
+  } else if (memoryEvents.length === 0 && diaryEntries.length === 0 && recalledCards.length === 0) {
     systemSections.push("【记忆现实约束】当前长期记忆库为空。如果对方问起过去的事，请直接诚实地说现在还没有相关记忆，绝对不要装作记得或编造细节。");
   }
 
@@ -181,6 +190,7 @@ export function assembleCompanionPrompt({
     innerLife,
     timeline,
     graph,
+    recalledCards,
     antiQuestionTriggered: Boolean(antiQuestionHint),
     promptChars: messages.reduce((sum, m) => sum + m.content.length, 0),
   };

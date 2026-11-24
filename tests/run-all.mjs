@@ -687,4 +687,162 @@ await test("10. Security hardening & concurrency regression (CSRF, DNS-rebinding
   }
 });
 
-console.log(`\nALL ${passed}/10 TEST SUITES PASSED`);
+// ---------------------------------------------------------------------------
+// 11. Portable Future-Companion Memory Cards & Cloud-First All-Provider Regression
+// ---------------------------------------------------------------------------
+await test("11. Portable Future-Companion Memory Cards, Cloud-First Presets, AI Minting & Anti-Leak Guard", async () => {
+  // 1. Verify all major cloud providers are first-class presets (zero-GPU friendly)
+  const presetIds = new Set(sdk.PROVIDER_PRESETS.map((p) => p.id));
+  for (const required of ["relay", "anthropic", "openai", "gemini", "grok", "deepseek", "openrouter", "siliconflow", "dashscope"]) {
+    assert.ok(presetIds.has(required), `missing cloud-first preset: ${required}`);
+  }
+
+  // 2. Pure memory-cards core guards (hallucination, sarcasm, third-party, secret leak)
+  const fakeKey = "sk-" + "fake0123456789abcdef0123";
+  assert.equal(sdk.isSensitiveCardText(`我的 key 是 ${fakeKey}`), true);
+  assert.equal(sdk.isSensitiveCardText("周末去青城山看日落"), false);
+
+  const hallucinated = sdk.evaluateMemoryCardCandidate(
+    { title: "爱吃榴莲", content: "超爱吃榴莲", quote: "我最爱吃榴莲", category: "preference" },
+    { userText: "今天下雨有点凉", assistantText: "记得添衣服" }
+  );
+  assert.equal(hallucinated.accepted, false);
+  assert.equal(hallucinated.reason, "hallucinated_evidence");
+
+  const joke = sdk.evaluateMemoryCardCandidate(
+    { title: "去火星", content: "打算明天去火星", quote: "打算明天去火星" },
+    { userText: "哈哈骗你的，才怪，我打算明天去火星", assistantText: "切" }
+  );
+  assert.equal(joke.accepted, false);
+  assert.equal(joke.reason, "sarcasm_or_joke");
+
+  // 3. Full CompanionEngine + Web Studio HTTP API round-trip
+  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-cards-test-"));
+  let lastSystemPrompt = "";
+  const mockFetch = async (_url, opts) => {
+    const reqBody = JSON.parse(String(opts?.body || "{}"));
+    const sys = reqBody.messages?.find((m) => m.role === "system")?.content || "";
+    lastSystemPrompt = sys;
+    const isMint = opts?.headers?.["x-nuomu-caller"] === "memory-card-mint";
+    const content = isMint
+      ? JSON.stringify({
+        cards: [
+          { title: "一起看海的约定", content: "约定今年秋天一起去青岛看海喝冰美式", category: "promise", pinned: true, quote: "今年秋天一起去青岛看海喝冰美式", tags: ["旅行", "约定"] },
+          { title: "编造的假记忆", content: "其实每天跑十公里", category: "preference", pinned: false, quote: "我每天跑十公里" },
+        ],
+      })
+      : "记得呀，秋天去青岛看海，还要记得你不吃香菜~";
+    const payload = {
+      choices: [{ message: { role: "assistant", content } }],
+      usage: { prompt_tokens: 90, completion_tokens: 28, total_tokens: 118 },
+    };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => payload,
+      text: async () => JSON.stringify(payload),
+    };
+  };
+
+  const engine = new CompanionEngine({
+    dataDir: join(tmpDir, "data"),
+    envPath: join(tmpDir, ".env"),
+    fetchFn: mockFetch,
+    llmOverrides: { baseUrl: "https://api.openai.com/v1", apiKey: "test-placeholder", model: "gpt-4o", protocol: "openai" },
+  });
+  const web = createWebStudioServer({ engine, fetchFn: mockFetch });
+  await new Promise((r) => web.listen(0, "127.0.0.1", r));
+  const wp = web.address().port;
+  const base = `http://127.0.0.1:${wp}`;
+
+  try {
+    // 3a. Manual card creation + secret rejection (HTTP 400)
+    const badCard = await fetch(`${base}/api/cards`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "密钥", content: `备份 ${fakeKey}`, category: "moment" }),
+    });
+    assert.equal(badCard.status, 400);
+
+    const add1 = await (await fetch(`${base}/api/cards`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "饮食忌口", content: "完全不吃香菜，喜欢拿铁少冰", category: "preference", pinned: true, tags: ["饮食"] }),
+    })).json();
+    assert.equal(add1.ok, true);
+    assert.equal(add1.card.pinned, true);
+
+    // 3b. Chat turn MUST receive the pinned Memory Card in its prompt!
+    const chatRes = await (await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "咱们今年秋天一起去青岛看海喝冰美式怎么样" }),
+    })).json();
+    assert.equal(chatRes.ok, true);
+    assert.ok(lastSystemPrompt.includes("饮食忌口") && lastSystemPrompt.includes("完全不吃香菜"), "Pinned Memory Card must be injected into cloud LLM prompt!");
+    assert.ok(chatRes.recalledCards.some((c) => c.title === "饮食忌口"));
+
+    // 3c. AI One-Click Mint from recent chat: accepts verbatim-quoted card & rejects hallucinated card!
+    const mintRes = await (await fetch(`${base}/api/cards/mint`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ maxTurns: 6 }),
+    })).json();
+    assert.equal(mintRes.ok, true);
+    assert.equal(mintRes.added, 1, "Only verbatim-verified card should be minted");
+    assert.equal(mintRes.rejected.length, 1, "Hallucinated card from LLM must be rejected");
+    assert.equal(mintRes.rejected[0].reason, "hallucinated_evidence");
+
+    // 3d. Export Portable Future-Companion Memory Card Pack (.json + readable Markdown Book)
+    const exp = await (await fetch(`${base}/api/cards/export`)).json();
+    assert.equal(exp.ok, true);
+    assert.equal(exp.pack.schema, sdk.MEMORY_CARD_SCHEMA);
+    assert.equal(exp.pack.stats.cardCount, 2);
+    assert.ok(exp.markdown.includes("未来伴侣记忆卡册") && exp.markdown.includes("一起看海的约定"));
+
+    // 3e. Wipe everything (keepCards=false), then plug card pack back in via /api/cards/import -> 100% restored!
+    await fetch(`${base}/api/memory/reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ keepPersona: true, keepCards: false }),
+    });
+    assert.equal(engine.listMemoryCards().length, 0);
+
+    const imp = await (await fetch(`${base}/api/cards/import`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ pack: exp.pack, mode: "merge", restorePersona: true }),
+    })).json();
+    assert.equal(imp.ok, true);
+    assert.equal(imp.addedCards, 2);
+    assert.equal(engine.listMemoryCards().length, 2);
+
+    // 3f. Toggle pin & delete card
+    const cardId = engine.listMemoryCards()[0].id;
+    const upd = await (await fetch(`${base}/api/cards/update`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: cardId, patch: { pinned: false } }),
+    })).json();
+    assert.equal(upd.ok, true);
+    assert.equal(upd.card.pinned, false);
+
+    const del = await (await fetch(`${base}/api/cards/delete`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: cardId }),
+    })).json();
+    assert.equal(del.ok, true);
+    assert.equal(engine.listMemoryCards().length, 1);
+
+    // 3g. Verify Web Studio inline HTML has zero unsafe innerHTML template interpolation
+    const html = await (await fetch(`${base}/`)).text();
+    assert.equal(/innerHTML\s*=\s*`[^`]*\$\{/.test(html), false);
+    assert.ok(html.includes('id="tab-cards"') && html.includes("/api/cards/mint"));
+  } finally {
+    web.close();
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+console.log(`\nALL ${passed}/11 TEST SUITES PASSED`);

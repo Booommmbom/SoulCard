@@ -12,16 +12,16 @@
 ---
 
 > **不要把你的 AI 伴侣锁死在某一家大模型的 Prompt 或讨好型 LoRA 里。**
-> 给她一本可自由迁移的 **灵魂账本（Soul Ledger）**——从每日情景记忆 → 周度阶段成长与旧规矩卸载 → 月度自传持续演化，未来无论在任意云端接口、本地开源模型还是下一代基座模型之间切换，都能无损带走全部真实人生。
+> **纯云端零显卡 · 零 `npm install` · 双击一键懒人启动（`start.bat` / `./start.sh` / `npm start`）**——普通轻薄本直接畅连 **Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站**；内置 **「未来伴侣记忆卡（Memory Card）」** 与 **灵魂账本**，把你和 TA 的珍贵记忆、偏好与约定存成可携带的 `.json` 存卡与人类可读 `.md` 记忆卡册，换模型、换电脑、乃至未来换任何实体，插卡即复活！
 
 ## 为什么做 Nuomu Soul？
 
 市面上绝大多数 AI 伴侣工程都会撞上三堵墙：
 1. **Prompt 无限膨胀与讨好退化**：每学一条偏好就往系统提示词里塞一条规矩（或者拿用户的 👍/👎 喂讨好型 LoRA），最后变成小心翼翼的客服，丧失独立性格与边界。
 2. **时间轴错乱与续写惯性**：隔了 3 小时再聊，Transformer 仍对着旧历史气泡强行续写（「水放了没？洗完澡没？」），既出戏又白烧 50%–80% 无效上下文 Token。
-3. **厂商与模型绑死**：底模更新换代时，陪伴多年积累的记忆、默契与变化无法干净带走。
+3. **门槛太高 & 厂商绑死**：动辄要求高配显卡装本地模型、装一堆 Python 依赖，或者换一家大模型就把几年的共同回忆全丢了。
 
-**Nuomu Soul** 提供 **15 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**完全自主重建的零框架依赖伴侣引擎与本地 Web Studio（`npm run web`）**、**全协议中转站自适应与一键配置向导（`npm run setup`）**、**原生 OneBot v11 桥接（`npm run onebot`）**以及多模型本地网关（`src/gateway/`），全部开箱即跑，无需 `npm install`。
+**Nuomu Soul** 提供 **16 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全云端模型即开即用（Claude / GPT / Gemini / Grok / DeepSeek / 各类国内免梯中转站）**、**未来伴侣记忆卡系统（`memory-cards.mjs`）**、**双击即用的本地 Web Studio（`start.bat` / `./start.sh` / `npm start`）**、终端实聊（`npm run chat`）以及原生 OneBot v11 桥接（`npm run onebot`），**无需显卡、无需 `npm install`**。
 
 ---
 
@@ -45,8 +45,9 @@ flowchart TD
 
 ---
 
-## 八大核心能力
+## 九大核心能力
 
+0. **未来伴侣记忆卡（`memory-cards.mjs`）**：把 TA 的偏好、共同约定、珍贵瞬间与灵感手账存成一张张可置顶、可搜索的「记忆卡」；支持手动写卡或 **AI 一键从对话提炼（自带原文逐字证据锁 + 密钥防泄露拦截）**；一键导出跨模型 `.json` 记忆存卡包与人类可读《记忆卡册.md》，换 Claude / GPT / Gemini / Grok / DeepSeek 或未来新设备，插卡无损合并恢复！
 1. **四层模型无关记忆金字塔（`episode-consolidation.mjs`）**：按 45 分钟自然断段把碎片聊天打包成 L1 情景段；每日低成本睡眠整理（`< 6` 条自动跳过，原生 JSON 输出，离线自动降级本地 Ollama），产出真实第一人称日记、带原文依据的双时态事实、以及带自然过期 TTL 的「心里惦记（`openLoops`）」。
 2. **成长演化与旧规矩自然卸载（`growth-evolution.mjs`）**：周度复盘把多日日记升华为阶段里程碑，同时按严格白名单把已内化的刻板旧规矩移出活跃 Prompt（归档保留历史），彻底避免 Prompt 越用越臃肿；支持每月沉淀 L3 月度自传。
 3. **双时态知识图谱 + HippoRAG PPR（`memory-graph-v2.mjs`）**：当用户口味或习惯改变时保留历史脉络（`valid_at` / `invalid_at` 极性覆盖），支持 5 类记忆来源归因与多跳联想召回。
@@ -69,22 +70,26 @@ flowchart TD
 
 ---
 
-## 30 秒极速体验（零依赖、零框架绑死、开箱就能聊）
+## 10 秒懒人一键上手（零依赖 · 零显卡 · 全云端开箱即聊）
 
-需要 **Node.js 20+**，无需 `npm install`：
+只需 **Node.js 20+**，**不需要 `npm install`，不需要独立显卡，不需要装 Ollama**：
+
+- **Windows 懒人最省心**：下载仓库后，直接**双击 [`start.bat`](./start.bat)**，自动启动并打开浏览器！
+- **macOS / Linux**：终端运行 **`./start.sh`** 或 **`npm start`**！
 
 ```bash
 git clone https://github.com/Booommmbom/nuomu-soul.git
 cd nuomu-soul
 
-# 方式 A（最推荐）：启动零依赖本地 Web Studio（浏览器打开 http://127.0.0.1:3460）
-# 网页内直接粘贴任意中转站网址与 Key、一键拉取模型并开聊，右侧实时可见 PAD 情绪、双时态图谱与日记！
-npm run web
+# 方式 A（最推荐 · 一键启动并自动打开浏览器）：
+# 在页面右上角选 Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站，贴入 Key 10 秒开聊！
+# 右侧直接管理「未来伴侣记忆卡」、实时观察 3D PAD 情绪、双时态图谱与成长日记！
+npm start
 
-# 方式 B：一秒离线跑通 8 大认知支柱完整生命周期演示（无需 Key，算法全在本地跑）
+# 方式 B：一秒离线跑通全部认知支柱演示（无需 Key）
 npm run demo
 
-# 方式 C：终端实聊 / 跑全量 10 大套单测与安全回归 / 零泄密安全审计
+# 方式 C：终端实聊 / 跑全量 11 大套单测与安全回归 / 零泄密安全审计
 npm run chat
 npm test
 npm run audit:secrets

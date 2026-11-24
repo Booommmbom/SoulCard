@@ -16,6 +16,17 @@ import { driftPadEmotion } from "../core/emotion-pad.mjs";
 import { collectActiveOpenLoops, detectResolvedOpenLoops } from "../core/episode-consolidation.mjs";
 import { computePromptDeclutterStats } from "../core/growth-evolution.mjs";
 import { snapshotInnerLife } from "../core/inner-life.mjs";
+import {
+  CARD_CATEGORIES,
+  buildMemoryCardPack,
+  evaluateMemoryCardCandidate,
+  isSensitiveCardText,
+  mergeMemoryCards,
+  normalizeMemoryCard,
+  recallMemoryCards,
+  renderMemoryCardBookMarkdown,
+  validateMemoryCardPack,
+} from "../core/memory-cards.mjs";
 import { buildBiTemporalTriples } from "../core/memory-graph-v2.mjs";
 import { maskApiKey } from "../core/provider-compat.mjs";
 import { runDailyConsolidation } from "./daily-consolidate.mjs";
@@ -100,6 +111,7 @@ export class CompanionEngine {
       rawMessages: join(this.stateDir, "raw-messages.jsonl"),
       turns: join(this.stateDir, "chat-turns.jsonl"),
       memoryEvents: join(this.stateDir, "memory-events.jsonl"),
+      memoryCards: join(this.stateDir, "memory-cards.json"),
       diaries: join(this.stateDir, "growth-diary.jsonl"),
       milestones: join(this.stateDir, "growth-milestones.jsonl"),
       chapters: join(this.stateDir, "growth-chapters.jsonl"),
@@ -120,6 +132,207 @@ export class CompanionEngine {
     const next = { ...this.getPersona(), ...(patch || {}), updatedAt: Date.now() };
     writeJsonAtomic(this.paths.persona, next);
     return next;
+  }
+
+  _readMemoryCards() {
+    const raw = readJsonSafe(this.paths.memoryCards, []);
+    const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.cards) ? raw.cards : []);
+    return list
+      .filter((c) => c && c.content)
+      .map((c) => normalizeMemoryCard(c))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
+
+  listMemoryCards({ category = "", query = "", pinnedOnly = false } = {}) {
+    let cards = this._readMemoryCards();
+    if (pinnedOnly) cards = cards.filter((c) => c.pinned);
+    if (category && category !== "all") cards = cards.filter((c) => c.category === category);
+    if (query && String(query).trim()) {
+      cards = recallMemoryCards(cards, String(query), { topK: 50, alwaysIncludePinned: 0 });
+    }
+    return cards;
+  }
+
+  addMemoryCard(input = {}, now = Date.now()) {
+    const content = String(input?.content ?? "").trim();
+    if (!content) return { ok: false, error: "记忆卡内容不能为空" };
+    if (isSensitiveCardText(content) || isSensitiveCardText(input?.title) || isSensitiveCardText(input?.quote)) {
+      return { ok: false, error: "检测到疑似 API Key、密码或敏感凭据，为保护隐私已阻止写入记忆卡" };
+    }
+    const existing = this._readMemoryCards();
+    const card = normalizeMemoryCard({ ...input, source: input?.source || "user" }, now);
+    const merged = mergeMemoryCards(existing, [card], { mode: "merge", now });
+    writeJsonAtomic(this.paths.memoryCards, merged.cards);
+    return { ok: true, card, duplicate: merged.added === 0, total: merged.cards.length };
+  }
+
+  updateMemoryCard(id, patch = {}, now = Date.now()) {
+    const targetId = String(id ?? "").trim();
+    if (!targetId) return { ok: false, error: "missing card id" };
+    if (isSensitiveCardText(patch?.content) || isSensitiveCardText(patch?.title)) {
+      return { ok: false, error: "检测到疑似敏感凭据，已阻止修改" };
+    }
+    const cards = this._readMemoryCards();
+    const idx = cards.findIndex((c) => c.id === targetId);
+    if (idx < 0) return { ok: false, error: "找不到对应记忆卡" };
+    const prev = cards[idx];
+    const next = normalizeMemoryCard({
+      ...prev,
+      ...patch,
+      id: prev.id,
+      createdAt: prev.createdAt,
+      updatedAt: now,
+    }, now);
+    cards[idx] = next;
+    cards.sort((a, b) => Number(b.pinned) - Number(a.pinned) || (b.updatedAt || 0) - (a.updatedAt || 0));
+    writeJsonAtomic(this.paths.memoryCards, cards);
+    return { ok: true, card: next, total: cards.length };
+  }
+
+  deleteMemoryCard(id) {
+    const targetId = String(id ?? "").trim();
+    if (!targetId) return { ok: false, error: "missing card id" };
+    const cards = this._readMemoryCards();
+    const next = cards.filter((c) => c.id !== targetId);
+    if (next.length === cards.length) return { ok: false, error: "找不到对应记忆卡" };
+    writeJsonAtomic(this.paths.memoryCards, next);
+    return { ok: true, deletedId: targetId, total: next.length };
+  }
+
+  /**
+   * Use the user's configured Cloud LLM (Claude/GPT/Gemini/Grok/DeepSeek) to distill recent chat turns
+   * into verified portable Memory Cards protected by the 4-Gate Verbatim Evidence Lock.
+   */
+  async mintMemoryCardsFromChat({ maxTurns = 12, now = Date.now() } = {}) {
+    return await this._enqueue(async () => {
+      const turns = readJsonlSafe(this.paths.turns).slice(-Math.max(2, maxTurns));
+      if (turns.length === 0) {
+        return { ok: false, skipped: true, reason: "no_turns", error: "还没有对话记录，先聊几句再提炼记忆卡吧" };
+      }
+      const combinedUser = turns.map((t) => String(t.userText || "")).join("\n");
+      const combinedAsst = turns.map((t) => String(t.text || "")).join("\n");
+      const transcript = turns.map((t) => `我: ${t.userText}\n伴侣: ${t.text}`).join("\n");
+      const cfg = this.getLlmConfig();
+      const llm = await callUnifiedLlm(
+        [
+          {
+            role: "system",
+            content:
+              "你是未来伴侣记忆卡铸造器。请从最近对话里提炼 1~3 张最值得长期珍藏的「记忆卡」（偏好、共同约定、珍贵瞬间或好点子）。\n" +
+              "严格规则：1. 严禁编造，每张卡必须附带对话原文中逐字出现的完整 quote；2. 严禁记录临时寒暄、反讽玩笑、密码或 API Key。\n" +
+              "只输出 JSON：{\"cards\":[{\"title\":\"简短温暖的标题\",\"content\":\"一句完整清晰的长期记忆\",\"category\":\"preference|promise|moment|inspiration\",\"tags\":[\"标签\"],\"pinned\":false,\"quote\":\"对话原文逐字片段\"}]}。",
+          },
+          { role: "user", content: transcript },
+        ],
+        {
+          baseUrl: cfg.baseUrl,
+          apiKey: cfg.apiKey,
+          model: cfg.model,
+          protocol: cfg.protocol,
+          temperature: 0.25,
+          maxTokens: 900,
+          jsonMode: true,
+          timeoutMs: 60_000,
+          extraHeaders: { "x-nuomu-caller": "memory-card-mint" },
+          fetchFn: this.fetchFn,
+        }
+      );
+      if (!llm.ok || !llm.content) {
+        return { ok: false, error: llm.error || "云端模型提炼记忆卡失败" };
+      }
+      let parsed = null;
+      try { parsed = JSON.parse(llm.content); } catch {
+        const s = llm.content.indexOf("{");
+        const e = llm.content.lastIndexOf("}");
+        if (s >= 0 && e > s) { try { parsed = JSON.parse(llm.content.slice(s, e + 1)); } catch {} }
+      }
+      const rawCards = Array.isArray(parsed?.cards) ? parsed.cards : [];
+      const existing = this._readMemoryCards();
+      const acceptedCards = [];
+      const rejected = [];
+      for (const raw of rawCards.slice(0, 5)) {
+        const verdict = evaluateMemoryCardCandidate(raw, { userText: combinedUser, assistantText: combinedAsst });
+        if (verdict.accepted) acceptedCards.push(verdict.card);
+        else rejected.push({ title: raw?.title || "", reason: verdict.reason });
+      }
+      const merged = mergeMemoryCards(existing, acceptedCards, { mode: "merge", now });
+      if (merged.added > 0) writeJsonAtomic(this.paths.memoryCards, merged.cards);
+      return {
+        ok: true,
+        added: merged.added,
+        skippedDuplicates: merged.skipped,
+        rejected,
+        cards: acceptedCards,
+        total: merged.cards.length,
+      };
+    });
+  }
+
+  exportMemoryCardPack(now = Date.now()) {
+    const persona = this.getPersona();
+    const cards = this._readMemoryCards();
+    const memoryEvents = readJsonlSafe(this.paths.memoryEvents);
+    const graph = buildBiTemporalTriples(memoryEvents, { now });
+    const diaries = readJsonlSafe(this.paths.diaries);
+    const milestones = readJsonlSafe(this.paths.milestones);
+    const chapters = readJsonlSafe(this.paths.chapters);
+    const pack = buildMemoryCardPack({
+      persona,
+      cards,
+      activeTriples: graph.active,
+      diaries,
+      milestones,
+      chapters,
+      now,
+    });
+    const markdown = renderMemoryCardBookMarkdown(pack);
+    return { ok: true, pack, markdown };
+  }
+
+  importMemoryCardPack(rawPack, { mode = "merge", restorePersona = false, now = Date.now() } = {}) {
+    const check = validateMemoryCardPack(rawPack);
+    if (!check.ok) return { ok: false, error: check.error };
+    const existing = this._readMemoryCards();
+    const merged = mergeMemoryCards(existing, rawPack.cards || [], { mode: mode === "replace" ? "replace" : "merge", now });
+    writeJsonAtomic(this.paths.memoryCards, merged.cards);
+
+    // Also import activeFacts as transparent memoryEvents if absent (never lose cross-model facts!)
+    let factsImported = 0;
+    if (Array.isArray(rawPack.activeFacts) && rawPack.activeFacts.length > 0) {
+      const events = readJsonlSafe(this.paths.memoryEvents);
+      const existingSet = new Set(events.map((e) => String(e.text || "").trim()));
+      let nextId = events.length + 1;
+      for (const f of rawPack.activeFacts) {
+        const line = `${f.subject || "我"}${Number(f.polarity ?? 1) < 0 ? "不" : ""}${f.predicate || "喜欢"}${f.object || ""}`.trim();
+        if (!line || existingSet.has(line) || isSensitiveCardText(line)) continue;
+        appendJsonl(this.paths.memoryEvents, {
+          id: nextId++,
+          ts: Number(f.validAt || now),
+          text: line,
+          source_type: "memory_card_import",
+          suppressed: 0,
+          forgotten_at: 0,
+        });
+        existingSet.add(line);
+        factsImported += 1;
+      }
+    }
+
+    let personaRestored = false;
+    if (restorePersona && rawPack.persona && typeof rawPack.persona === "object") {
+      this.savePersona(rawPack.persona);
+      personaRestored = true;
+    }
+
+    return {
+      ok: true,
+      mode: mode === "replace" ? "replace" : "merge",
+      addedCards: merged.added,
+      skippedCards: merged.skipped,
+      totalCards: merged.cards.length,
+      factsImported,
+      personaRestored,
+    };
   }
 
   getLlmConfig() {
@@ -159,6 +372,7 @@ export class CompanionEngine {
     const innerLife = snapshotInnerLife(now);
     const turns = readJsonlSafe(this.paths.turns);
     const memoryEvents = readJsonlSafe(this.paths.memoryEvents);
+    const memoryCards = this._readMemoryCards();
     const diaries = readJsonlSafe(this.paths.diaries);
     const milestones = readJsonlSafe(this.paths.milestones);
     const chapters = readJsonlSafe(this.paths.chapters);
@@ -202,6 +416,8 @@ export class CompanionEngine {
       stats: {
         turnCount: turns.length,
         memoryEventCount: memoryEvents.length,
+        memoryCardCount: memoryCards.length,
+        pinnedCardCount: memoryCards.filter((c) => c.pinned).length,
         activeTripleCount: graph.active.length,
         historicalTripleCount: graph.historical.length,
         diaryCount: diaries.length,
@@ -210,6 +426,8 @@ export class CompanionEngine {
         activeOpenLoopCount: activeOpenLoops.length,
       },
       declutter,
+      cardCategories: CARD_CATEGORIES,
+      memoryCards,
       recentTurns: turns.slice(-40),
       activeTriples: graph.active.slice(-24),
       historicalTriples: graph.historical.slice(-12),
@@ -236,6 +454,7 @@ export class CompanionEngine {
     const prevPad = readJsonSafe(this.paths.pad, null);
     const turns = readJsonlSafe(this.paths.turns);
     const memoryEvents = readJsonlSafe(this.paths.memoryEvents);
+    const memoryCards = this._readMemoryCards();
     const diaries = readJsonlSafe(this.paths.diaries);
     const milestones = readJsonlSafe(this.paths.milestones);
     const chapters = readJsonlSafe(this.paths.chapters);
@@ -271,13 +490,14 @@ export class CompanionEngine {
       capturedMemory = true;
     }
 
-    // 3. Assemble complete model-agnostic cognitive prompt
+    // 3. Assemble complete model-agnostic cognitive prompt (injecting pinned & relevant Memory Cards!)
     const assembled = assembleCompanionPrompt({
       userText: cleanUser,
       historyTurns: turns,
       persona,
       pad: prevPad,
       memoryEvents,
+      memoryCards,
       diaryEntries: diaries,
       milestones,
       monthlyChapters: chapters,
@@ -356,6 +576,7 @@ export class CompanionEngine {
         archivedCount: assembled.timeline.archivedRows.length,
       },
       recalledFacts: assembled.graph.recalled.slice(0, 5),
+      recalledCards: (assembled.recalledCards || []).map((c) => ({ id: c.id, title: c.title, pinned: c.pinned })),
       resolvedOpenLoops: loopRes.resolved,
       capturedMemory,
     };
@@ -476,13 +697,14 @@ export class CompanionEngine {
    * 100% transparent, guaranteed zero-ghost memory reset (preserves persona & `.env` config).
    * Because there are NO hidden zstd session blobs, cleared memories stay truly cleared.
    */
-  resetMemory({ keepPersona = true } = {}) {
+  resetMemory({ keepPersona = true, keepCards = false } = {}) {
     const savedPersona = keepPersona ? this.getPersona() : null;
     const filesToRemove = [
       this.paths.pad,
       this.paths.rawMessages,
       this.paths.turns,
       this.paths.memoryEvents,
+      ...(keepCards ? [] : [this.paths.memoryCards]),
       this.paths.diaries,
       this.paths.milestones,
       this.paths.chapters,

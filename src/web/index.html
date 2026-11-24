@@ -67,11 +67,20 @@
 
   /* Right Cognitive Inspector */
   .inspector { display: flex; flex-direction: column; background: var(--panel); min-height: 0; }
-  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); }
-  .tab-btn { border: none; border-radius: 0; background: transparent; padding: 11px 6px; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
+  .tab-btn { border: none; border-radius: 0; background: transparent; padding: 11px 4px; font-size: 12px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
   .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); background: rgba(245,158,11,0.06); font-weight: 600; }
   .tab-body { flex: 1; overflow-y: auto; padding: 14px; display: none; flex-direction: column; gap: 12px; }
   .tab-body.active { display: flex; }
+
+  .mem-card-item { padding: 10px 12px; background: #10151e; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .mem-card-item.pinned { border-color: rgba(245,158,11,0.55); background: linear-gradient(180deg, rgba(245,158,11,0.08), #10151e); }
+  .mem-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .mem-card-title { font-weight: 600; font-size: 13px; color: #f8fafc; }
+  .mem-card-body { font-size: 12.5px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+  .mem-card-quote { font-size: 11.5px; color: var(--muted); border-left: 2px solid var(--border); padding-left: 8px; }
+  .mem-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chip.active { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
 
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
   .card h3 { margin: 0; font-size: 13px; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center; }
@@ -112,13 +121,13 @@
       </div>
       <div class="top-actions">
         <button class="sm" id="ambientBtn" title="模拟 6 层防打扰主动轻敲">轻敲预览</button>
-        <button class="sm primary" id="openSetupBtn">中转站 / Key</button>
+        <button class="sm primary" id="openSetupBtn">云端模型 / Key</button>
       </div>
     </header>
 
     <div class="banner hidden" id="setupBanner">
-      <span>尚未配置中转站网址或 API Key：点右侧按钮粘贴任意中转站（国内免梯）或本地 Ollama，10 秒即可开聊。</span>
-      <button class="sm primary" id="bannerSetupBtn">去配置</button>
+      <span>无需显卡 · 纯云端即开即聊！点右侧选 Claude / GPT / Gemini / Grok / DeepSeek 或任意中转站贴 Key，10 秒开聊。</span>
+      <button class="sm primary" id="bannerSetupBtn">10 秒配置</button>
     </div>
 
     <div class="messages" id="messages"></div>
@@ -133,13 +142,63 @@
   <!-- Right: Live Cognitive Inspector -->
   <aside class="inspector">
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="mind">活心智</button>
+      <button class="tab-btn active" data-tab="cards">记忆卡 <span id="cardsTabBadge">0</span></button>
+      <button class="tab-btn" data-tab="mind">活心智</button>
       <button class="tab-btn" data-tab="growth">成长 & 灵魂</button>
-      <button class="tab-btn" data-tab="setup">中转站 & 人设</button>
+      <button class="tab-btn" data-tab="setup">云端 & 人设</button>
     </nav>
 
+    <!-- Tab 0: Portable Future-Companion Memory Cards -->
+    <div class="tab-body active" id="tab-cards">
+      <div class="card">
+        <h3>未来伴侣记忆卡（跨模型永久存卡） <span class="pill ok" id="cardsTotalPill">0 张</span></h3>
+        <div class="meta-line">把想让 TA 永远记住的偏好、约定与珍贵瞬间存成「记忆卡」，换 Claude / GPT / Gemini / Grok 或换电脑插卡即复活。</div>
+        <div style="display:grid;grid-template-columns:1fr 104px;gap:6px;">
+          <input id="cardTitle" placeholder="标题（如：我们的周末约定 / 我不吃香菜）" />
+          <select id="cardCategory">
+            <option value="pinned">★ 挚爱置顶</option>
+            <option value="preference">♡ 偏好习惯</option>
+            <option value="promise">✦ 共同约定</option>
+            <option value="moment" selected>✿ 珍贵瞬间</option>
+            <option value="inspiration">✎ 灵感手账</option>
+          </select>
+        </div>
+        <textarea class="field" id="cardContent" rows="2" placeholder="写下想让未来陪伴人牢牢记住的话、习惯、故事或约定（自动拦截密钥隐私）..."></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="cardPinned" style="width:auto;" /> 置顶为常驻记忆
+          </label>
+          <div class="row-actions">
+            <button class="sm primary" id="addCardBtn">+ 存入记忆卡</button>
+            <button class="sm" id="mintCardsBtn" title="用当前云端模型从最近聊天自动提炼记忆卡">✨ AI 提炼记忆卡</button>
+          </div>
+        </div>
+        <div class="row-actions" style="border-top:1px solid var(--border);padding-top:8px;">
+          <button class="sm" id="exportCardsJsonBtn">💾 导出存卡 (.json)</button>
+          <button class="sm" id="exportCardsMdBtn">📖 导出卡册 (.md)</button>
+          <button class="sm" id="importCardsBtn">📥 插卡导入</button>
+          <input type="file" id="importCardsFile" accept=".json,application/json" style="display:none" />
+        </div>
+        <div class="status-box" id="cardsStatus">支持手动铸卡、AI 从对话提炼、跨模型无损导入导出；所有置顶卡会在每次对话自动生效。</div>
+      </div>
+
+      <div class="card">
+        <h3>我的记忆卡墙</h3>
+        <input id="cardSearch" placeholder="搜索记忆卡标题、内容或标签..." />
+        <div class="chip-grid" id="cardFilterChips">
+          <button type="button" class="chip active" data-cat="all">全部</button>
+          <button type="button" class="chip" data-cat="pinned">★ 置顶</button>
+          <button type="button" class="chip" data-cat="preference">♡ 偏好</button>
+          <button type="button" class="chip" data-cat="promise">✦ 约定</button>
+          <button type="button" class="chip" data-cat="moment">✿ 瞬间</button>
+          <button type="button" class="chip" data-cat="inspiration">✎ 手账</button>
+        </div>
+        <div id="cardsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
     <!-- Tab 1: Mind -->
-    <div class="tab-body active" id="tab-mind">
+    <div class="tab-body" id="tab-mind">
       <div class="card">
         <h3>3D PAD 连续情绪 <span class="pill" id="padLabel">-</span></h3>
         <div class="bar-row"><span>愉悦 P</span><div class="bar-track"><div class="bar-fill" id="barP" style="background:var(--amber);width:60%"></div></div><span id="valP">60</span></div>
@@ -193,7 +252,8 @@
     <!-- Tab 3: Universal Relay Setup & Persona -->
     <div class="tab-body" id="tab-setup">
       <div class="card">
-        <h3>中转站 / 大模型接入（国内免梯 · 全格式兼容）</h3>
+        <h3>全云端大模型一键接入（Claude · GPT · Gemini · Grok · DeepSeek · 中转站）</h3>
+        <div class="meta-line">普通轻薄本零显卡流畅运行！点选下方任意云端厂商或中转站预设，贴入 API Key 即可开聊。</div>
         <div class="chip-grid" id="presetChips"></div>
         <div>
           <label class="label-sm">中转站或官网网址（裸域名、/v1、/v1/chat/completions、/v1/messages 随便粘）</label>
@@ -260,6 +320,90 @@
 const $ = (id) => document.getElementById(id);
 let currentState = null;
 let sending = false;
+let activeCardFilter = "all";
+const CARD_CAT_LABELS = { pinned: "★ 挚爱置顶", preference: "♡ 偏好习惯", promise: "✦ 共同约定", moment: "✿ 珍贵瞬间", inspiration: "✎ 灵感手账" };
+
+function renderCardsWall(cards = []) {
+  const list = Array.isArray(cards) ? cards : [];
+  const q = ($("cardSearch")?.value || "").trim().toLowerCase();
+  const filtered = list.filter((c) => {
+    if (activeCardFilter === "pinned" && !c.pinned) return false;
+    if (activeCardFilter !== "all" && activeCardFilter !== "pinned" && c.category !== activeCardFilter) return false;
+    if (q) {
+      const hay = `${c.title || ""} ${c.content || ""} ${(c.tags || []).join(" ")}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  $("cardsTabBadge").textContent = String(list.length);
+  $("cardsTotalPill").textContent = `${list.length} 张 · ${list.filter((c) => c.pinned).length} 置顶`;
+  const box = $("cardsList");
+  box.textContent = "";
+  if (filtered.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "meta-line";
+    empty.textContent = list.length === 0
+      ? "还没有记忆卡：在上方写下第一张想让未来陪伴人永远记住的偏好或约定吧！"
+      : "当前筛选条件下没有匹配的记忆卡。";
+    box.appendChild(empty);
+    return;
+  }
+  for (const c of filtered) {
+    const item = document.createElement("div");
+    item.className = "mem-card-item" + (c.pinned ? " pinned" : "");
+
+    const head = document.createElement("div");
+    head.className = "mem-card-head";
+    const title = document.createElement("span");
+    title.className = "mem-card-title";
+    title.textContent = (c.pinned ? "★ " : "") + String(c.title || "未命名");
+    const cat = document.createElement("span");
+    cat.className = "pill" + (c.pinned ? " warn" : "");
+    cat.textContent = CARD_CAT_LABELS[c.category] || c.category || "记忆卡";
+    head.append(title, cat);
+
+    const body = document.createElement("div");
+    body.className = "mem-card-body";
+    body.textContent = String(c.content || "");
+    item.append(head, body);
+
+    if (c.quote) {
+      const qEl = document.createElement("div");
+      qEl.className = "mem-card-quote";
+      qEl.textContent = `“${c.quote}”`;
+      item.appendChild(qEl);
+    }
+
+    const foot = document.createElement("div");
+    foot.className = "mem-card-foot";
+    const meta = document.createElement("span");
+    meta.className = "meta-line";
+    const dStr = c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : "";
+    meta.textContent = `${dStr}${c.source === "ai_minted" ? " · AI提炼" : ""}`;
+
+    const btns = document.createElement("div");
+    btns.className = "row-actions";
+    const pinBtn = document.createElement("button");
+    pinBtn.className = "sm";
+    pinBtn.textContent = c.pinned ? "取消置顶" : "★ 置顶";
+    pinBtn.onclick = async () => {
+      await api("/api/cards/update", { method: "POST", body: JSON.stringify({ id: c.id, patch: { pinned: !c.pinned } }) });
+      await refreshState(false);
+    };
+    const delBtn = document.createElement("button");
+    delBtn.className = "sm danger";
+    delBtn.textContent = "删除";
+    delBtn.onclick = async () => {
+      if (!confirm(`确定删除记忆卡「${c.title}」吗？`)) return;
+      await api("/api/cards/delete", { method: "POST", body: JSON.stringify({ id: c.id }) });
+      await refreshState(false);
+    };
+    btns.append(pinBtn, delBtn);
+    foot.append(meta, btns);
+    item.appendChild(foot);
+    box.appendChild(item);
+  }
+}
 
 function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
@@ -314,6 +458,9 @@ function renderState(s) {
   $("modelPill").className = "pill " + (s.llm.configured ? "ok" : "warn");
   $("setupBanner").classList.toggle("hidden", Boolean(s.llm.configured));
   $("innerLifeLine").textContent = `Zero-DSH v2 · ${s.innerLife.slotLabel || ""} ${s.innerLife.activity || ""}`;
+
+  // Memory Cards wall
+  renderCardsWall(s.memoryCards || []);
 
   // Mind tab
   $("padLabel").textContent = s.pad.label;
@@ -496,7 +643,7 @@ async function sendMessage() {
         await sleep(Math.min(1800, bubbles[i].delayMs));
       }
       const meta = i === bubbles.length - 1
-        ? `${res.model} · ${res.latencyMs}ms · ${bubbles.length}泡 · 召回${res.recalledFacts?.length || 0}条事实${res.resolvedOpenLoops?.length ? ` · 自动消号${res.resolvedOpenLoops.length}条惦记` : ""}`
+        ? `${res.model} · ${res.latencyMs}ms · ${bubbles.length}泡 · 记忆卡${res.recalledCards?.length || 0}张 · 事实${res.recalledFacts?.length || 0}条${res.resolvedOpenLoops?.length ? ` · 消号${res.resolvedOpenLoops.length}条` : ""}`
         : "";
       appendBubble("assistant", bubbles[i].text, meta);
     }
@@ -595,9 +742,122 @@ $("savePersonaBtn").onclick = async () => {
 };
 
 $("resetMemBtn").onclick = async () => {
-  if (!confirm("确定彻底清空所有记忆、日记与对话历史吗？（会保留人设与 .env 配置，无任何黑盒残留）")) return;
-  await api("/api/memory/reset", { method: "POST", body: JSON.stringify({ keepPersona: true }) });
+  if (!confirm("确定清空近期对话与图谱记忆吗？（默认保留你珍藏的记忆卡、人设与 .env 配置）")) return;
+  await api("/api/memory/reset", { method: "POST", body: JSON.stringify({ keepPersona: true, keepCards: true }) });
   await refreshState(true);
+};
+
+// --- Portable Future-Companion Memory Card Actions ---
+$("cardSearch").addEventListener("input", () => renderCardsWall(currentState?.memoryCards || []));
+document.querySelectorAll("#cardFilterChips .chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    activeCardFilter = chip.dataset.cat || "all";
+    document.querySelectorAll("#cardFilterChips .chip").forEach((c) => c.classList.toggle("active", c === chip));
+    renderCardsWall(currentState?.memoryCards || []);
+  });
+});
+
+$("addCardBtn").onclick = async () => {
+  const title = $("cardTitle").value.trim();
+  const content = $("cardContent").value.trim();
+  const category = $("cardCategory").value;
+  const pinned = $("cardPinned").checked || category === "pinned";
+  if (!content) {
+    $("cardsStatus").className = "status-box err";
+    $("cardsStatus").textContent = "请先写下想存进记忆卡的内容。";
+    return;
+  }
+  const r = await api("/api/cards", {
+    method: "POST",
+    body: JSON.stringify({ title, content, category, pinned }),
+  });
+  if (!r.ok) {
+    $("cardsStatus").className = "status-box err";
+    $("cardsStatus").textContent = `✖ 保存失败：${r.error}`;
+    return;
+  }
+  $("cardTitle").value = "";
+  $("cardContent").value = "";
+  $("cardPinned").checked = false;
+  $("cardsStatus").className = "status-box ok";
+  $("cardsStatus").textContent = r.duplicate ? "这张记忆卡已经存在啦，已为你保留。" : `✔ 已存入记忆卡「${r.card.title}」，现在聊天 TA 就会立刻记得！`;
+  await refreshState(false);
+};
+
+$("mintCardsBtn").onclick = async () => {
+  $("cardsStatus").className = "status-box";
+  $("cardsStatus").textContent = "正在请当前云端模型从近期对话里提炼值得珍藏的记忆卡...";
+  const r = await api("/api/cards/mint", { method: "POST", body: JSON.stringify({ maxTurns: 12 }) });
+  $("cardsStatus").className = "status-box " + (r.ok ? "ok" : "err");
+  if (!r.ok) {
+    $("cardsStatus").textContent = `✖ 提炼失败：${r.error || "请先配置云端模型并聊几句"}`;
+    return;
+  }
+  $("cardsStatus").textContent = r.added > 0
+    ? `✔ 成功铸造 ${r.added} 张新记忆卡（当前共 ${r.total} 张）！`
+    : `已完成检查：近期对话暂无新增需要入卡的长期记忆（共 ${r.total} 张）。`;
+  await refreshState(false);
+};
+
+function downloadTextFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+}
+
+$("exportCardsJsonBtn").onclick = async () => {
+  const r = await api("/api/cards/export");
+  if (!r.ok) {
+    $("cardsStatus").className = "status-box err";
+    $("cardsStatus").textContent = `✖ 导出失败：${r.error || "未知错误"}`;
+    return;
+  }
+  const dateStr = new Date().toISOString().slice(0, 10);
+  downloadTextFile(`nuomu-memory-card-${dateStr}.json`, JSON.stringify(r.pack, null, 2), "application/json");
+  $("cardsStatus").className = "status-box ok";
+  $("cardsStatus").textContent = `✔ 已导出可携带「未来伴侣记忆卡包」JSON（${r.pack.stats.cardCount} 张记忆卡 · ${r.pack.stats.factCount} 条事实），换任何云端模型或电脑均可插卡还原！`;
+};
+
+$("exportCardsMdBtn").onclick = async () => {
+  const r = await api("/api/cards/export");
+  if (!r.ok) {
+    $("cardsStatus").className = "status-box err";
+    $("cardsStatus").textContent = `✖ 导出失败：${r.error || "未知错误"}`;
+    return;
+  }
+  const dateStr = new Date().toISOString().slice(0, 10);
+  downloadTextFile(`nuomu-memory-book-${dateStr}.md`, r.markdown, "text/markdown; charset=utf-8");
+  $("cardsStatus").className = "status-box ok";
+  $("cardsStatus").textContent = `✔ 已导出人类可读《未来伴侣记忆卡册》Markdown（${r.pack.stats.cardCount} 张卡），双击即可阅读收藏！`;
+};
+
+$("importCardsBtn").onclick = () => $("importCardsFile").click();
+$("importCardsFile").onchange = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const pack = JSON.parse(text);
+    const restorePersona = confirm("导入记忆卡时，是否同时恢复卡包里保存的伴侣人设？（点「取消」则只无损合并记忆卡与事实）");
+    const r = await api("/api/cards/import", {
+      method: "POST",
+      body: JSON.stringify({ pack, mode: "merge", restorePersona }),
+    });
+    $("cardsStatus").className = "status-box " + (r.ok ? "ok" : "err");
+    $("cardsStatus").textContent = r.ok
+      ? `✔ 插卡导入成功！新增 ${r.addedCards} 张卡（跳过重复 ${r.skippedCards} 张，导入事实 ${r.factsImported} 条，当前共 ${r.totalCards} 张）`
+      : `✖ 导入失败：${r.error}`;
+    await refreshState(false);
+  } catch (err) {
+    $("cardsStatus").className = "status-box err";
+    $("cardsStatus").textContent = `✖ 所选文件不是合法的记忆卡 JSON：${err?.message || err}`;
+  } finally {
+    e.target.value = "";
+  }
 };
 
 async function runGrowthAction(endpoint, label) {

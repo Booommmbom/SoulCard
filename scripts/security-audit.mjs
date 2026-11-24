@@ -12,6 +12,8 @@ const IGNORE_DIRS = new Set([".git", "node_modules", "data", "logs", "backups"])
 
 const SECRET_PATTERNS = [
   { name: "openai_or_deepseek_sk_key", re: /\bsk-[A-Za-z0-9_-]{20,}\b/ },
+  { name: "anthropic_sk_ant_key", re: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/ },
+  { name: "github_pat_token", re: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b/ },
   { name: "google_aistudio_aq_key", re: /\bAQ\.[A-Za-z0-9_-]{20,}\b/ },
   { name: "google_aiza_key", re: /\bAIza[A-Za-z0-9_-]{20,}\b/ },
   { name: "xai_api_key", re: /\bxai-[A-Za-z0-9_-]{20,}\b/ },

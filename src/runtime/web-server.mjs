@@ -4,6 +4,7 @@
 // works 100% offline for UI assets and connects seamlessly to ANY relay / domestic API / local Ollama.
 
 import http from "node:http";
+import { spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -222,8 +223,66 @@ export function createWebStudioServer({
 
       if (req.method === "POST" && pathname === "/api/memory/reset") {
         const body = await readJsonBody(req);
-        const r = engine.resetMemory({ keepPersona: body.keepPersona !== false });
+        const r = engine.resetMemory({
+          keepPersona: body.keepPersona !== false,
+          keepCards: body.keepCards === true,
+        });
         sendJson(res, 200, r);
+        return;
+      }
+
+      // --- Portable Future-Companion Memory Cards API ---
+      if (req.method === "GET" && pathname === "/api/cards") {
+        const category = urlObj.searchParams.get("category") || "all";
+        const query = urlObj.searchParams.get("q") || "";
+        const pinnedOnly = urlObj.searchParams.get("pinned") === "1";
+        const cards = engine.listMemoryCards({ category, query, pinnedOnly });
+        sendJson(res, 200, { ok: true, cards, total: cards.length });
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/cards") {
+        const body = await readJsonBody(req);
+        const r = engine.addMemoryCard(body);
+        sendJson(res, r.ok ? 200 : 400, r);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/cards/update") {
+        const body = await readJsonBody(req);
+        const r = engine.updateMemoryCard(body.id, body.patch || body);
+        sendJson(res, r.ok ? 200 : 400, r);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/cards/delete") {
+        const body = await readJsonBody(req);
+        const r = engine.deleteMemoryCard(body.id);
+        sendJson(res, r.ok ? 200 : 400, r);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/cards/mint") {
+        const body = await readJsonBody(req);
+        const r = await engine.mintMemoryCardsFromChat({ maxTurns: Number(body.maxTurns) || 12 });
+        sendJson(res, r.ok ? 200 : (r.skipped ? 200 : 502), r);
+        return;
+      }
+
+      if (req.method === "GET" && pathname === "/api/cards/export") {
+        const r = engine.exportMemoryCardPack();
+        sendJson(res, 200, r);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/cards/import") {
+        const body = await readJsonBody(req);
+        const rawPack = body.pack && typeof body.pack === "object" ? body.pack : body;
+        const r = engine.importMemoryCardPack(rawPack, {
+          mode: body.mode === "replace" ? "replace" : "merge",
+          restorePersona: body.restorePersona === true,
+        });
+        sendJson(res, r.ok ? 200 : 400, r);
         return;
       }
 
@@ -334,22 +393,37 @@ function listenWithAutoFallback(server, startPort, maxAttempts = 10) {
   });
 }
 
+function openInDefaultBrowser(url) {
+  try {
+    if (process.platform === "win32") {
+      spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref();
+    } else if (process.platform === "darwin") {
+      spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+    } else {
+      spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
+    }
+  } catch {}
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
 if (isMain) {
   const requestedPort = Number(process.env.NUOMU_WEB_PORT || 3460);
+  const autoOpen = process.argv.includes("--open") || process.env.NUOMU_AUTO_OPEN === "1";
   const engine = new CompanionEngine();
   const server = createWebStudioServer({ engine });
   listenWithAutoFallback(server, requestedPort).then((boundPort) => {
     const snap = engine.getSnapshot();
+    const url = `http://127.0.0.1:${boundPort}`;
     console.log("\n==============================================================");
-    console.log("  Nuomu Soul — Autonomous Zero-DSH Web Studio");
+    console.log("  Nuomu Soul — Cloud-First Zero-GPU Companion Studio");
     if (boundPort !== requestedPort) {
       console.log(`  Notice         : Port ${requestedPort} is busy, auto-switched to ${boundPort}`);
     }
-    console.log(`  Open in browser: http://127.0.0.1:${boundPort}`);
+    console.log(`  Open in browser: ${url}`);
     console.log(`  Data directory : ${snap.dataDir}`);
     console.log(`  Active LLM     : ${snap.llm.model} (${snap.llm.source}:${snap.llm.protocol})`);
     console.log("==============================================================\n");
+    if (autoOpen) openInDefaultBrowser(url);
   }).catch((err) => {
     console.error(`✖ 启动失败: ${err?.message || err}`);
     process.exit(1);

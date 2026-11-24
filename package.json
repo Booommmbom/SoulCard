@@ -32,9 +32,11 @@
     "./core/core-session": "./src/core/core-session.mjs",
     "./core/eval-benchmark": "./src/core/eval-benchmark.mjs",
     "./core/provider-compat": "./src/core/provider-compat.mjs",
-    "./core/companion-brain": "./src/core/companion-brain.mjs"
+    "./core/companion-brain": "./src/core/companion-brain.mjs",
+    "./core/memory-cards": "./src/core/memory-cards.mjs"
   },
   "scripts": {
+    "start": "node src/runtime/web-server.mjs --open",
     "web": "node src/runtime/web-server.mjs",
     "chat": "node src/runtime/cli-chat.mjs",
     "setup": "node src/runtime/setup-wizard.mjs",
