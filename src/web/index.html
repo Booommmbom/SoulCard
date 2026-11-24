@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nuomu Soul Studio — Autonomous Companion Engine</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #151a22;
+    --card: #1b222d;
+    --border: #2a3342;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --amber: #f59e0b;
+    --amber-soft: rgba(245, 158, 11, 0.14);
+    --emerald: #10b981;
+    --rose: #fb7185;
+    --sky: #38bdf8;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.5; }
+  .app { display: grid; grid-template-columns: 1fr 410px; height: 100vh; overflow: hidden; }
+  @media (max-width: 960px) { .app { grid-template-columns: 1fr; grid-template-rows: 1fr 44vh; } }
+
+  /* Left Chat Pane */
+  .chat-pane { display: flex; flex-direction: column; border-right: 1px solid var(--border); min-height: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .avatar { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #fb7185); color: #111; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
+  .brand-title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .pill.ok { color: var(--emerald); border-color: rgba(16,185,129,0.4); }
+  .pill.warn { color: var(--amber); border-color: rgba(245,158,11,0.45); background: var(--amber-soft); }
+  .top-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  .banner { padding: 10px 18px; background: var(--amber-soft); border-bottom: 1px solid rgba(245,158,11,0.35); color: #fcd34d; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
+  .banner.hidden { display: none; }
+
+  .messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .msg-row { display: flex; flex-direction: column; max-width: 78%; gap: 4px; }
+  .msg-row.user { align-self: flex-end; align-items: flex-end; }
+  .msg-row.assistant { align-self: flex-start; align-items: flex-start; }
+  .msg-row.ambient { align-self: center; align-items: center; max-width: 90%; }
+  .bubble { padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; }
+  .msg-row.user .bubble { background: #263245; border: 1px solid #384a66; border-bottom-right-radius: 4px; }
+  .msg-row.assistant .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg-row.ambient .bubble { background: rgba(245,158,11,0.1); border: 1px dashed rgba(245,158,11,0.45); color: #fde68a; font-size: 13px; }
+  .meta-line { font-size: 11px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .typing-indicator { padding: 8px 18px; font-size: 12px; color: var(--amber); min-height: 26px; }
+
+  .composer { display: flex; gap: 10px; padding: 12px 18px 16px; background: var(--panel); border-top: 1px solid var(--border); }
+  .composer textarea { flex: 1; resize: none; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 12px; font: inherit; min-height: 44px; max-height: 120px; outline: none; }
+  .composer textarea:focus { border-color: var(--amber); }
+
+  /* Buttons & Inputs */
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 6px 12px; transition: border-color .15s, background .15s; }
+  button:hover { border-color: #4b5563; background: #222b38; }
+  button.primary { background: var(--amber); color: #111; border-color: var(--amber); font-weight: 600; }
+  button.primary:hover { background: #fbbf24; }
+  button.danger { border-color: rgba(251,113,133,0.45); color: var(--rose); }
+  button.sm { padding: 4px 9px; font-size: 12px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input, select, textarea.field { width: 100%; background: #0f141c; border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font: inherit; outline: none; }
+  input:focus, select:focus, textarea.field:focus { border-color: var(--amber); }
+
+  /* Right Cognitive Inspector */
+  .inspector { display: flex; flex-direction: column; background: var(--panel); min-height: 0; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); }
+  .tab-btn { border: none; border-radius: 0; background: transparent; padding: 11px 6px; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); background: rgba(245,158,11,0.06); font-weight: 600; }
+  .tab-body { flex: 1; overflow-y: auto; padding: 14px; display: none; flex-direction: column; gap: 12px; }
+  .tab-body.active { display: flex; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .card h3 { margin: 0; font-size: 13px; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center; }
+  .bar-row { display: grid; grid-template-columns: 56px 1fr 38px; align-items: center; gap: 8px; font-size: 12px; }
+  .bar-track { height: 7px; border-radius: 999px; background: #0d1117; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .35s ease; }
+
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 11px; padding: 4px 8px; border-radius: 999px; background: #10151e; border: 1px solid var(--border); color: #cbd5e1; cursor: pointer; }
+  .chip:hover { border-color: var(--amber); color: var(--amber); }
+
+  .fact-item { font-size: 12px; padding: 6px 8px; background: #10151e; border: 1px solid var(--border); border-radius: 8px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .fact-item.hist { opacity: 0.65; text-decoration: line-through; }
+  .entry-box { font-size: 12px; padding: 8px 10px; background: #10151e; border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .entry-title { font-weight: 600; color: #f8fafc; display: flex; justify-content: space-between; }
+  .label-sm { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .status-box { font-size: 12px; padding: 8px 10px; border-radius: 8px; background: #10151e; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
+  .status-box.ok { border-color: rgba(16,185,129,0.5); color: #6ee7b7; }
+  .status-box.err { border-color: rgba(251,113,133,0.5); color: #fda4af; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Left: Real Companion Conversation -->
+  <section class="chat-pane">
+    <header class="topbar">
+      <div class="brand">
+        <div class="avatar" id="avatarLetter">诺</div>
+        <div>
+          <div class="brand-title">
+            <span id="companionName">诺姆</span>
+            <span class="pill ok" id="moodPill">松弛自然</span>
+            <span class="pill" id="modelPill">未配置</span>
+          </div>
+          <div class="meta-line" id="innerLifeLine">Zero-DSH Autonomous Engine v2</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="sm" id="ambientBtn" title="模拟 6 层防打扰主动轻敲">轻敲预览</button>
+        <button class="sm primary" id="openSetupBtn">中转站 / Key</button>
+      </div>
+    </header>
+
+    <div class="banner hidden" id="setupBanner">
+      <span>尚未配置中转站网址或 API Key：点右侧按钮粘贴任意中转站（国内免梯）或本地 Ollama，10 秒即可开聊。</span>
+      <button class="sm primary" id="bannerSetupBtn">去配置</button>
+    </div>
+
+    <div class="messages" id="messages"></div>
+    <div class="typing-indicator" id="typingIndicator"></div>
+
+    <div class="composer">
+      <textarea id="chatInput" rows="1" placeholder="像平时聊天一样发句话（Enter 发送，Shift+Enter 换行）..."></textarea>
+      <button class="primary" id="sendBtn">发送</button>
+    </div>
+  </section>
+
+  <!-- Right: Live Cognitive Inspector -->
+  <aside class="inspector">
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="mind">活心智</button>
+      <button class="tab-btn" data-tab="growth">成长 & 灵魂</button>
+      <button class="tab-btn" data-tab="setup">中转站 & 人设</button>
+    </nav>
+
+    <!-- Tab 1: Mind -->
+    <div class="tab-body active" id="tab-mind">
+      <div class="card">
+        <h3>3D PAD 连续情绪 <span class="pill" id="padLabel">-</span></h3>
+        <div class="bar-row"><span>愉悦 P</span><div class="bar-track"><div class="bar-fill" id="barP" style="background:var(--amber);width:60%"></div></div><span id="valP">60</span></div>
+        <div class="bar-row"><span>精力 A</span><div class="bar-track"><div class="bar-fill" id="barA" style="background:var(--rose);width:50%"></div></div><span id="valA">50</span></div>
+        <div class="bar-row"><span>笃定 D</span><div class="bar-track"><div class="bar-fill" id="barD" style="background:var(--sky);width:55%"></div></div><span id="valD">55</span></div>
+        <div class="meta-line" id="padToneHint"></div>
+      </div>
+
+      <div class="card">
+        <h3>DMN 内生生活流 <span class="pill" id="innerSlot">-</span></h3>
+        <div id="innerActivity" style="font-size:13px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>心里惦记 (Diary Open Loops) <span class="pill" id="loopsCount">0</span></h3>
+        <div id="loopsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>双时态知识图谱 <span class="pill" id="triplesCount">0 活跃 / 0 历史</span></h3>
+        <div id="triplesList" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Growth & Soul Ledger -->
+    <div class="tab-body" id="tab-growth">
+      <div class="card">
+        <h3>成长整理与灵魂账本 v1 <span class="pill ok" id="declutterBadge">精简健康</span></h3>
+        <div class="row-actions">
+          <button class="sm primary" id="runDailyBtn">睡前日记整理</button>
+          <button class="sm" id="runWeeklyBtn">周度成长复盘</button>
+          <button class="sm" id="runMonthlyBtn">L3 月度自传</button>
+          <button class="sm" id="exportSoulBtn">导出灵魂账本</button>
+          <button class="sm" id="importSoulBtn">导入还原</button>
+          <input type="file" id="importSoulFile" accept=".json,application/json" style="display:none" />
+        </div>
+        <div class="status-box" id="growthStatus">点击上方按钮可实时把对话沉淀为第一人称日记、周里程碑、月度自传或可跨模型迁移的 JSON 灵魂账本。</div>
+      </div>
+
+      <div class="card">
+        <h3>近期成长日记 <span class="pill" id="diaryCount">0</span></h3>
+        <div id="diaryList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>周度里程碑 & 月度自传</h3>
+        <div id="milestoneList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Universal Relay Setup & Persona -->
+    <div class="tab-body" id="tab-setup">
+      <div class="card">
+        <h3>中转站 / 大模型接入（国内免梯 · 全格式兼容）</h3>
+        <div class="chip-grid" id="presetChips"></div>
+        <div>
+          <label class="label-sm">中转站或官网网址（裸域名、/v1、/v1/chat/completions、/v1/messages 随便粘）</label>
+          <input id="cfgUrl" placeholder="例如 https://your-relay.com 或 https://api.deepseek.com" />
+          <div class="meta-line" id="cfgPreview" style="margin-top:4px;"></div>
+        </div>
+        <div>
+          <label class="label-sm">API Key（自动清理空格、引号与多余 Bearer 前缀；本地 Ollama 可留空）</label>
+          <input id="cfgKey" type="password" placeholder="粘贴 sk-... 或留空保持已保存的 Key" />
+          <div class="meta-line" id="cfgKeyMask" style="margin-top:3px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 120px;gap:8px;">
+          <div>
+            <label class="label-sm">模型名称（可点右侧按钮自动拉取）</label>
+            <input id="cfgModel" placeholder="deepseek-chat / gpt-4o-mini / qwen-plus" />
+          </div>
+          <div>
+            <label class="label-sm">协议模式</label>
+            <select id="cfgProto">
+              <option value="auto">auto (自动)</option>
+              <option value="openai">openai</option>
+              <option value="anthropic">anthropic</option>
+              <option value="gemini">gemini</option>
+              <option value="ollama">ollama</option>
+            </select>
+          </div>
+        </div>
+        <div id="modelPickerRow" style="display:none;">
+          <label class="label-sm">从中转站拉取到的可用模型：</label>
+          <select id="discoveredModels"></select>
+        </div>
+        <div class="row-actions">
+          <button class="sm" id="fetchModelsBtn">自动拉取模型列表</button>
+          <button class="sm primary" id="saveConfigBtn">测试连通并保存 .env</button>
+        </div>
+        <div class="status-box" id="cfgStatus">支持任意 NewAPI / One-API 中转站、国内直连 API 与本地离线模型。</div>
+      </div>
+
+      <div class="card">
+        <h3>伴侣人设与拟人节奏</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label class="label-sm">名字</label><input id="pName" /></div>
+          <div><label class="label-sm">称呼你为</label><input id="pPartner" /></div>
+        </div>
+        <div><label class="label-sm">说话节奏模式</label>
+          <select id="pPacing">
+            <option value="natural">natural (真人多气泡打字感)</option>
+            <option value="relaxed">relaxed (从容慢回)</option>
+            <option value="instant">instant (极速直出)</option>
+          </select>
+        </div>
+        <div><label class="label-sm">语感风格</label><textarea class="field" id="pVoice" rows="2"></textarea></div>
+        <div class="row-actions">
+          <button class="sm primary" id="savePersonaBtn">保存人设</button>
+          <button class="sm danger" id="resetMemBtn">彻底清空记忆（零残留）</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let currentState = null;
+let sending = false;
+
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab-body").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+}
+document.querySelectorAll(".tab-btn").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+$("openSetupBtn").addEventListener("click", () => switchTab("setup"));
+$("bannerSetupBtn").addEventListener("click", () => switchTab("setup"));
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { "content-type": "application/json", ...(opts.headers || {}) },
+    ...opts,
+  });
+  return await res.json();
+}
+
+function appendBubble(role, text, meta = "") {
+  const box = $("messages");
+  const row = document.createElement("div");
+  row.className = "msg-row " + role;
+  const b = document.createElement("div");
+  b.className = "bubble";
+  b.textContent = text;
+  row.appendChild(b);
+  if (meta) {
+    const m = document.createElement("div");
+    m.className = "meta-line";
+    m.textContent = meta;
+    row.appendChild(m);
+  }
+  box.appendChild(row);
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderState(s) {
+  currentState = s;
+  const p = s.persona || {};
+  $("companionName").textContent = p.name || "诺姆";
+  $("avatarLetter").textContent = (p.name || "诺").slice(0, 1);
+  $("moodPill").textContent = `${s.pad.label} · P${Math.round(s.pad.pleasure * 100)} A${Math.round(s.pad.arousal * 100)} D${Math.round(s.pad.dominance * 100)}`;
+  $("modelPill").textContent = `${s.llm.model} (${s.llm.source})`;
+  $("modelPill").className = "pill " + (s.llm.configured ? "ok" : "warn");
+  $("setupBanner").classList.toggle("hidden", Boolean(s.llm.configured));
+  $("innerLifeLine").textContent = `Zero-DSH v2 · ${s.innerLife.slotLabel || ""} ${s.innerLife.activity || ""}`;
+
+  // Mind tab
+  $("padLabel").textContent = s.pad.label;
+  $("barP").style.width = `${Math.round(s.pad.pleasure * 100)}%`;
+  $("barA").style.width = `${Math.round(s.pad.arousal * 100)}%`;
+  $("barD").style.width = `${Math.round(s.pad.dominance * 100)}%`;
+  $("valP").textContent = Math.round(s.pad.pleasure * 100);
+  $("valA").textContent = Math.round(s.pad.arousal * 100);
+  $("valD").textContent = Math.round(s.pad.dominance * 100);
+  $("padToneHint").textContent = s.pad.toneHint || "";
+  $("innerSlot").textContent = s.innerLife.slotLabel || "日常";
+  $("innerActivity").textContent = s.innerLife.activity || "";
+
+  // Open Loops
+  const loops = s.activeOpenLoops || [];
+  $("loopsCount").textContent = String(loops.length);
+  $("loopsList").innerHTML = loops.length === 0
+    ? '<div class="meta-line">当前没有未了结的心里惦记（生成日记后会自动浮现）。</div>'
+    : "";
+  for (const l of loops) {
+    const div = document.createElement("div");
+    div.className = "fact-item";
+    const span = document.createElement("span");
+    span.textContent = `[${l.fromDate || "近期"}] ${l.text}`;
+    const btn = document.createElement("button");
+    btn.className = "sm";
+    btn.textContent = "✓ 已聊过";
+    btn.onclick = async () => {
+      await api("/api/open-loops/resolve", { method: "POST", body: JSON.stringify({ key: l.key }) });
+      await refreshState(false);
+    };
+    div.append(span, btn);
+    $("loopsList").appendChild(div);
+  }
+
+  // Bi-temporal Graph
+  const act = s.activeTriples || [];
+  const hist = s.historicalTriples || [];
+  $("triplesCount").textContent = `${act.length} 活跃 / ${hist.length} 历史`;
+  const tl = $("triplesList");
+  tl.innerHTML = (act.length + hist.length) === 0
+    ? '<div class="meta-line">聊起喜好、计划或讨厌的事时，会自动沉淀为双时态知识图谱。</div>'
+    : "";
+  for (const t of act.slice(-10).reverse()) {
+    const div = document.createElement("div");
+    div.className = "fact-item";
+    div.textContent = `${t.subject}${Number(t.polarity) < 0 ? "不" : ""}${t.predicate}「${t.object}」`;
+    tl.appendChild(div);
+  }
+  for (const h of hist.slice(-4).reverse()) {
+    const div = document.createElement("div");
+    div.className = "fact-item hist";
+    div.textContent = `（已演变）${h.subject}${Number(h.polarity) < 0 ? "不" : ""}${h.predicate}「${h.object}」`;
+    tl.appendChild(div);
+  }
+
+  // Growth tab
+  $("declutterBadge").textContent = `${s.declutter?.statusLabel || "精简健康"} · 活跃${s.declutter?.activeRuleCount || 0} / 卸载${s.declutter?.retiredCount || 0}`;
+  $("diaryCount").textContent = String((s.diaries || []).length);
+  const dl = $("diaryList");
+  dl.innerHTML = (s.diaries || []).length === 0 ? '<div class="meta-line">聊满 6 条后点「睡前日记整理」即可生成真实第一人称日记。</div>' : "";
+  for (const d of (s.diaries || []).slice(0, 6)) {
+    const el = document.createElement("div");
+    el.className = "entry-box";
+    el.innerHTML = `<div class="entry-title"><span>${d.dateKey}</span><span class="pill">${d.dayMood || ""}</span></div><div></div>`;
+    el.lastChild.textContent = d.diaryEntry || "";
+    dl.appendChild(el);
+  }
+
+  const ml = $("milestoneList");
+  const combined = [
+    ...(s.chapters || []).map((c) => ({ badge: `月度 ${c.monthKey}`, title: c.chapterTitle, body: c.narrative })),
+    ...(s.milestones || []).map((m) => ({ badge: `周度 ${m.weekKey}`, title: m.theme, body: m.milestone })),
+  ];
+  ml.innerHTML = combined.length === 0 ? '<div class="meta-line">生成日记后，点击「周度成长复盘」或「L3 月度自传」沉淀长期成长。</div>' : "";
+  for (const item of combined.slice(0, 6)) {
+    const el = document.createElement("div");
+    el.className = "entry-box";
+    el.innerHTML = `<div class="entry-title"><span></span><span class="pill"></span></div><div></div>`;
+    el.querySelector(".entry-title span:first-child").textContent = item.title || "";
+    el.querySelector(".pill").textContent = item.badge;
+    el.lastChild.textContent = item.body || "";
+    ml.appendChild(el);
+  }
+
+  // Setup tab (only fill empty inputs so we don't clobber typing)
+  if (!$("cfgUrl").value) $("cfgUrl").value = s.llm.baseUrl || "";
+  if (!$("cfgModel").value) $("cfgModel").value = s.llm.model || "";
+  $("cfgKeyMask").textContent = `当前已保存 Key: ${s.llm.maskedKey || "(空)"}`;
+  $("pName").value = p.name || "";
+  $("pPartner").value = p.partnerName || "";
+  $("pPacing").value = p.pacingMode || "natural";
+  $("pVoice").value = p.voiceStyle || "";
+
+  if ($("presetChips").children.length === 0 && Array.isArray(s.presets)) {
+    for (const pr of s.presets) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = pr.name.split(" (")[0];
+      chip.title = pr.hint || "";
+      chip.onclick = () => {
+        $("cfgUrl").value = pr.baseUrl || "";
+        $("cfgModel").value = pr.defaultModel || "";
+        $("cfgProto").value = pr.protocol || "auto";
+        previewUrl();
+      };
+      $("presetChips").appendChild(chip);
+    }
+  }
+}
+
+async function previewUrl() {
+  const r = await api("/api/config/preview", {
+    method: "POST",
+    body: JSON.stringify({ baseUrl: $("cfgUrl").value, protocol: $("cfgProto").value, model: $("cfgModel").value }),
+  });
+  $("cfgPreview").textContent = r.chatEndpoint ? `自动识别: ${r.protocol} -> ${r.chatEndpoint}` : "";
+}
+$("cfgUrl").addEventListener("input", previewUrl);
+$("cfgProto").addEventListener("change", previewUrl);
+
+async function refreshState(renderHistory = false) {
+  const s = await api("/api/state");
+  renderState(s);
+  if (renderHistory) {
+    $("messages").innerHTML = "";
+    if (!s.recentTurns || s.recentTurns.length === 0) {
+      appendBubble("ambient", `欢迎来到 Nuomu Soul 独立工作室（Zero-DSH v2）。当前记忆库为透明本地文件，支持任意中转站与本地模型。直接发句话试试看！`);
+    } else {
+      for (const t of s.recentTurns) {
+        appendBubble("user", t.userText);
+        appendBubble("assistant", t.text, `${t.model || ""}`);
+      }
+    }
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function sendMessage() {
+  if (sending) return;
+  const text = $("chatInput").value.trim();
+  if (!text) return;
+  $("chatInput").value = "";
+  appendBubble("user", text);
+  sending = true;
+  $("sendBtn").disabled = true;
+  $("typingIndicator").textContent = `${currentState?.persona?.name || "诺姆"} 正在看消息并思考...`;
+  try {
+    const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ message: text }) });
+    if (!res.ok) {
+      appendBubble("ambient", `发送失败：${res.error || "请检查中转站配置"}`);
+      return;
+    }
+    const bubbles = res.pacing?.bubbles || [{ text: res.reply, delayMs: 0 }];
+    for (let i = 0; i < bubbles.length; i += 1) {
+      if (i > 0 && bubbles[i].delayMs > 0) {
+        $("typingIndicator").textContent = `${currentState?.persona?.name || "诺姆"} 正在输入下一句...`;
+        await sleep(Math.min(1800, bubbles[i].delayMs));
+      }
+      const meta = i === bubbles.length - 1
+        ? `${res.model} · ${res.latencyMs}ms · ${bubbles.length}泡 · 召回${res.recalledFacts?.length || 0}条事实${res.resolvedOpenLoops?.length ? ` · 自动消号${res.resolvedOpenLoops.length}条惦记` : ""}`
+        : "";
+      appendBubble("assistant", bubbles[i].text, meta);
+    }
+    await refreshState(false);
+  } finally {
+    sending = false;
+    $("sendBtn").disabled = false;
+    $("typingIndicator").textContent = "";
+    $("chatInput").focus();
+  }
+}
+
+$("sendBtn").onclick = sendMessage;
+$("chatInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+$("ambientBtn").onclick = async () => {
+  const r = await api("/api/ambient?force=1");
+  if (r.shouldCheckIn && r.message) {
+    appendBubble("ambient", `[主动轻敲 · ${r.kind}] ${r.message}`);
+  }
+};
+
+$("fetchModelsBtn").onclick = async () => {
+  $("cfgStatus").className = "status-box";
+  $("cfgStatus").textContent = "正在向中转站拉取 /v1/models 可用模型列表...";
+  const r = await api("/api/config/models", {
+    method: "POST",
+    body: JSON.stringify({ baseUrl: $("cfgUrl").value, apiKey: $("cfgKey").value, protocol: $("cfgProto").value }),
+  });
+  if (r.ok && r.models.length > 0) {
+    const sel = $("discoveredModels");
+    sel.innerHTML = "";
+    for (const m of r.models.slice(0, 60)) {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      sel.appendChild(opt);
+    }
+    sel.onchange = () => { $("cfgModel").value = sel.value; };
+    $("modelPickerRow").style.display = "block";
+    if (!$("cfgModel").value) $("cfgModel").value = r.models[0];
+    $("cfgStatus").className = "status-box ok";
+    $("cfgStatus").textContent = `✔ 拉取成功，共 ${r.models.length} 个可用模型，可在下拉框直接选择。`;
+  } else {
+    $("cfgStatus").className = "status-box";
+    $("cfgStatus").textContent = "该中转站未开放模型列表接口，直接手动填写模型名即可。";
+  }
+};
+
+$("saveConfigBtn").onclick = async () => {
+  $("cfgStatus").className = "status-box";
+  $("cfgStatus").textContent = "正在测试 5-token 连通性并写入 .env ...";
+  const r = await api("/api/config", {
+    method: "POST",
+    body: JSON.stringify({
+      baseUrl: $("cfgUrl").value,
+      apiKey: $("cfgKey").value,
+      model: $("cfgModel").value,
+      protocol: $("cfgProto").value,
+    }),
+  });
+  if (!r.ok) {
+    $("cfgStatus").className = "status-box err";
+    $("cfgStatus").textContent = `✖ 保存失败: ${r.error}`;
+    return;
+  }
+  $("cfgKey").value = "";
+  const okPing = r.testResult?.ok;
+  $("cfgStatus").className = "status-box " + (okPing ? "ok" : "err");
+  $("cfgStatus").textContent = okPing
+    ? `✔ 连通成功 (${r.testResult.latencyMs}ms)！已生效并写入 .env\n接口: ${r.config.chatEndpoint}\n模型: ${r.config.model} | 回复: "${r.testResult.content}"`
+    : `⚠ 配置已写入 .env，但连通测试未通过：\n${r.testResult?.error || "未知错误"}`;
+  await refreshState(false);
+};
+
+$("savePersonaBtn").onclick = async () => {
+  await api("/api/persona", {
+    method: "POST",
+    body: JSON.stringify({
+      name: $("pName").value,
+      partnerName: $("pPartner").value,
+      pacingMode: $("pPacing").value,
+      voiceStyle: $("pVoice").value,
+    }),
+  });
+  await refreshState(false);
+  appendBubble("ambient", "✔ 人设与节奏模式已更新生效。");
+};
+
+$("resetMemBtn").onclick = async () => {
+  if (!confirm("确定彻底清空所有记忆、日记与对话历史吗？（会保留人设与 .env 配置，无任何黑盒残留）")) return;
+  await api("/api/memory/reset", { method: "POST", body: JSON.stringify({ keepPersona: true }) });
+  await refreshState(true);
+};
+
+async function runGrowthAction(endpoint, label) {
+  $("growthStatus").className = "status-box";
+  $("growthStatus").textContent = `正在执行${label}...`;
+  const r = await api(endpoint, { method: "POST", body: JSON.stringify({ force: true }) });
+  $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
+  $("growthStatus").textContent = r.skipped
+    ? `跳过（${r.reason}）：请先聊几轮积累素材后再整理。`
+    : `✔ ${label}完成！${r.record?.diaryEntry || r.record?.milestone || r.record?.narrative || ""}`;
+  await refreshState(false);
+}
+$("runDailyBtn").onclick = () => runGrowthAction("/api/consolidate/daily", "睡前日记整理");
+$("runWeeklyBtn").onclick = () => runGrowthAction("/api/consolidate/weekly", "周度成长复盘");
+$("runMonthlyBtn").onclick = () => runGrowthAction("/api/consolidate/monthly", "L3 月度自传");
+
+$("exportSoulBtn").onclick = async () => {
+  const r = await api("/api/soul/export");
+  if (!r.ok) return;
+  const blob = new Blob([JSON.stringify(r.payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `nuomu-soul-ledger-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  $("growthStatus").className = "status-box ok";
+  $("growthStatus").textContent = `✔ 已导出灵魂账本 v1（${JSON.stringify(r.stats)}）`;
+};
+
+$("importSoulBtn").onclick = () => $("importSoulFile").click();
+$("importSoulFile").onchange = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  const payload = JSON.parse(text);
+  const r = await api("/api/soul/import", { method: "POST", body: JSON.stringify({ payload, mode: "merge" }) });
+  $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
+  $("growthStatus").textContent = r.ok ? `✔ 灵魂账本无损合并还原成功：${JSON.stringify(r.totals)}` : `✖ 导入失败：${r.error}`;
+  e.target.value = "";
+  await refreshState(false);
+};
+
+refreshState(true).then(previewUrl);
+</script>
+</body>
+</html>

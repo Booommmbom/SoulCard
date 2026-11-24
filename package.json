@@ -31,10 +31,14 @@
     "./core/fewshot-anchor": "./src/core/fewshot-anchor.mjs",
     "./core/core-session": "./src/core/core-session.mjs",
     "./core/eval-benchmark": "./src/core/eval-benchmark.mjs",
-    "./core/provider-compat": "./src/core/provider-compat.mjs"
+    "./core/provider-compat": "./src/core/provider-compat.mjs",
+    "./core/companion-brain": "./src/core/companion-brain.mjs"
   },
   "scripts": {
+    "web": "node src/runtime/web-server.mjs",
+    "chat": "node src/runtime/cli-chat.mjs",
     "setup": "node src/runtime/setup-wizard.mjs",
+    "onebot": "node src/runtime/onebot-bridge.mjs",
     "test": "node tests/run-all.mjs",
     "demo": "node examples/demo-soul-lifecycle.mjs",
     "audit:secrets": "node scripts/security-audit.mjs",

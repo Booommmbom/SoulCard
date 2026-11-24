@@ -10,8 +10,12 @@ import { runDailyConsolidation } from "../src/runtime/daily-consolidate.mjs";
 import { runWeeklyGrowthReflection } from "../src/runtime/weekly-growth.mjs";
 import { exportSoulLedger, importSoulLedger, runMonthlyAutobiography } from "../src/runtime/soul-ledger.mjs";
 import { runEvalBenchmark } from "../src/runtime/eval-runner.mjs";
+import http from "node:http";
 import { callUnifiedLlm, resolveLlmConfig } from "../src/runtime/llm-client.mjs";
 import { applySetupConfig, upsertDotEnvFile } from "../src/runtime/setup-wizard.mjs";
+import { CompanionEngine } from "../src/runtime/companion-engine.mjs";
+import { createWebStudioServer } from "../src/runtime/web-server.mjs";
+import { createOneBotBridgeServer, extractOneBotText } from "../src/runtime/onebot-bridge.mjs";
 
 const require = createRequire(import.meta.url);
 const { createVertexAuthProvider } = require("../src/gateway/gemini-auth.cjs");
@@ -46,6 +50,9 @@ await test("1. Unified SDK barrel exports all key pure functions cleanly", () =>
     "resolveChatEndpoint",
     "buildUnifiedChatRequest",
     "parseUnifiedChatResponse",
+    "assembleCompanionPrompt",
+    "postprocessCompanionReply",
+    "cleanCompanionReply",
   ]) {
     assert.equal(typeof sdk[fn], "function", `missing export: ${fn}`);
   }
@@ -382,4 +389,178 @@ await test("7. Universal Relay & Multi-Protocol Adapter (all URL shapes, key cle
   }
 });
 
-console.log(`\nALL ${passed}/7 TEST SUITES PASSED`);
+await test("8. Autonomous Zero-DSH CompanionEngine lifecycle (PAD, Bi-Temporal Graph, RP cleanup, Diary Open-Loop auto-resolve & zero-ghost reset)", async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-engine-"));
+  try {
+    const envPath = join(tmpDir, ".env");
+    writeFileSync(envPath, "LLM_BASE_URL=https://relay.example.com/v1\nLLM_API_KEY=demo-engine-key\nLLM_MODEL=deepseek-chat\n", "utf8");
+    const mockFetch = async (_url, init) => {
+      const body = JSON.parse(init.body || "{}");
+      const allText = (body.messages || []).map((m) => String(m.content || "")).join("\n");
+      if (allText.includes("diaryEntry")) {
+        return {
+          ok: true,
+          json: async () => ({
+            model: "deepseek-chat",
+            choices: [{ message: { content: JSON.stringify({
+              dayMood: "轻松自然",
+              episodes: [{ timeRange: "15:00–15:05", title: "聊咖啡口味变化", summary: "发现用户不再喝冰美式了。", emotionalTone: "自然", salience: 4 }],
+              facts: [{ subject: "用户", predicate: "likes", object: "冰美式", polarity: -1, confidence: 0.9, evidence: "不再喜欢冰美式" }],
+              openLoops: [{ text: "问问对方换了热拿铁后胃舒服点没", ttlDays: 3 }],
+              diaryEntry: "今天聊到对方戒了冰美式改喝热拿铁，记下来改天关心一下胃还舒不舒服。",
+              growthObservation: null,
+            }) } }],
+            usage: { prompt_tokens: 120, completion_tokens: 80, total_tokens: 200 },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          model: "deepseek-chat",
+          choices: [{ message: { content: "（笑）哈哈收到啦，今天忙了一整天你也真是够能扛的，今晚先别想别的，靠着歇口气吧。" } }],
+          usage: { prompt_tokens: 90, completion_tokens: 35, total_tokens: 125 },
+        }),
+      };
+    };
+
+    const engine = new CompanionEngine({ dataDir: join(tmpDir, "data"), envPath, fetchFn: mockFetch });
+    const t1 = await engine.chat("我很喜欢喝冰美式", { now: now - 120_000, jitter: 1 });
+    assert.equal(t1.ok, true);
+    assert.equal(t1.reply.includes("（笑）"), false);
+    assert.ok(t1.pacing.bubbles.length >= 2);
+    assert.equal(t1.capturedMemory, true);
+
+    const t2 = await engine.chat("最近胃不舒服，不再喜欢冰美式了", { now: now - 60_000, jitter: 1 });
+    assert.equal(t2.ok, true);
+    const t3 = await engine.chat("改喝热拿铁感觉暖和多了", { now: now - 30_000, jitter: 1 });
+    assert.equal(t3.ok, true);
+
+    const snap = engine.getSnapshot(now);
+    assert.equal(snap.zeroDsh, true);
+    assert.equal(snap.stats.turnCount, 3);
+    assert.ok(snap.stats.activeTripleCount >= 1);
+    assert.ok(snap.stats.historicalTripleCount >= 1);
+
+    // Run sleep diary consolidation (6 messages = 3 turns)
+    const daily = await engine.consolidateDaily({ now, force: true });
+    assert.equal(daily.ok, true);
+    assert.equal(daily.record.parseOk, true);
+
+    // Ambient check-in should naturally pick up the un-nudged diary open loop!
+    const amb = engine.checkAmbient({ now: now + 90 * 60_000, force: true });
+    assert.equal(amb.shouldCheckIn, true);
+    assert.equal(amb.kind, "diary_open_loop");
+
+    // Mentioning warm latte / stomach comfort should auto-resolve the diary open loop!
+    const t4 = await engine.chat("换了热拿铁之后胃舒服多了", { now: now + 95 * 60_000, jitter: 1 });
+    assert.equal(t4.resolvedOpenLoops.length, 1);
+
+    // Zero-ghost reset wipes ALL memories while preserving persona cleanly
+    engine.savePersona({ name: "小诺" });
+    engine.resetMemory({ keepPersona: true });
+    const afterReset = engine.getSnapshot(now + 100 * 60_000);
+    assert.equal(afterReset.persona.name, "小诺");
+    assert.equal(afterReset.stats.turnCount, 0);
+    assert.equal(afterReset.stats.activeTripleCount, 0);
+    assert.equal(afterReset.stats.diaryCount, 0);
+  } finally {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+await test("9. Local Web Studio HTTP API & Native Zero-DSH OneBot v11 Bridge end-to-end", async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-web-"));
+  const sentOneBot = [];
+  const mockFetch = async (url, init) => {
+    const u = String(url);
+    if (u.endsWith("/send_private_msg")) {
+      sentOneBot.push(JSON.parse(init.body));
+      return { ok: true, status: 200, json: async () => ({ status: "ok" }) };
+    }
+    if (u.endsWith("/v1/models")) {
+      return { ok: true, json: async () => ({ data: [{ id: "deepseek-chat" }, { id: "qwen-plus" }] }) };
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        model: "deepseek-chat",
+        choices: [{ message: { content: "在呢，刚看到消息，今晚别熬太晚啦" } }],
+        usage: { prompt_tokens: 40, completion_tokens: 15, total_tokens: 55 },
+      }),
+    };
+  };
+
+  const engine = new CompanionEngine({ dataDir: join(tmpDir, "data"), envPath: join(tmpDir, ".env"), fetchFn: mockFetch });
+  const webServer = createWebStudioServer({ engine, fetchFn: mockFetch });
+  const obServer = createOneBotBridgeServer({ engine, onebotApiUrl: "http://127.0.0.1:9999", ownerId: "88888", fetchFn: mockFetch, deliverDelay: false });
+
+  await new Promise((r) => webServer.listen(0, "127.0.0.1", r));
+  await new Promise((r) => obServer.listen(0, "127.0.0.1", r));
+  const webPort = webServer.address().port;
+  const obPort = obServer.address().port;
+
+  try {
+    // Web UI serves offline HTML cleanly
+    const home = await fetch(`http://127.0.0.1:${webPort}/`);
+    assert.equal(home.status, 200);
+    const html = await home.text();
+    assert.ok(html.includes("Nuomu Soul Studio"));
+
+    // Configure relay directly via Web API -> auto-discovers models -> tests & saves `.env`
+    const modelsRes = await (await fetch(`http://127.0.0.1:${webPort}/api/config/models`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ baseUrl: "relay.example.com", apiKey: "Bearer demo-web-key" }),
+    })).json();
+    assert.equal(modelsRes.ok, true);
+    assert.deepEqual(modelsRes.models, ["deepseek-chat", "qwen-plus"]);
+
+    const saveRes = await (await fetch(`http://127.0.0.1:${webPort}/api/config`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ baseUrl: "relay.example.com", apiKey: "Bearer demo-web-key", model: "deepseek-chat" }),
+    })).json();
+    assert.equal(saveRes.ok, true);
+    assert.equal(saveRes.saved, true);
+    assert.equal(saveRes.testResult.ok, true);
+
+    // Chat via Web API
+    const chatRes = await (await fetch(`http://127.0.0.1:${webPort}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "我超喜欢拍胶片照片" }),
+    })).json();
+    assert.equal(chatRes.ok, true);
+    assert.ok(chatRes.reply.length > 0);
+
+    // Export Soul Ledger via Web API
+    const expRes = await (await fetch(`http://127.0.0.1:${webPort}/api/soul/export`)).json();
+    assert.equal(expRes.ok, true);
+    assert.equal(expRes.payload.schemaVersion, "nuomu-soul-ledger-v1");
+
+    // Native Zero-DSH OneBot Bridge: blocks stranger, accepts owner, delivers reply!
+    assert.equal(extractOneBotText({ raw_message: "[CQ:face,id=1]你好呀" }), "你好呀");
+    const blocked = await (await fetch(`http://127.0.0.1:${obPort}/`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ post_type: "message", message_type: "private", user_id: 11111, raw_message: "hi" }),
+    })).json();
+    assert.equal(blocked.ignored, true);
+    assert.equal(blocked.reason, "not_in_owner_allowlist");
+
+    const accepted = await (await fetch(`http://127.0.0.1:${obPort}/`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ post_type: "message", message_type: "private", user_id: 88888, raw_message: "今晚在干嘛" }),
+    })).json();
+    assert.equal(accepted.ok, true);
+    assert.ok(sentOneBot.length >= 1);
+  } finally {
+    webServer.close();
+    obServer.close();
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+console.log(`\nALL ${passed}/9 TEST SUITES PASSED`);

@@ -21,7 +21,7 @@ Most AI companion stacks fail in three predictable ways:
 2. **Temporal Blindness & Continuation Bias**: Replaying 3-hour-old chat bubbles makes Transformers obsessively continue stale actions ("Did you finish your shower yet?" at midnight) while burning 50%–80% extra tokens.
 3. **Vendor Lock-In**: When a better base model arrives next year, years of lived context are trapped inside proprietary chat logs or model weights.
 
-**Nuomu Soul** solves this with **14 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO) plus a **Universal Relay & Multi-Protocol Adapter** (`npm run setup`), portable runtime orchestrators (`src/runtime/`), and a multi-model local gateway (`src/gateway/`).
+**Nuomu Soul** solves this with **15 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO), a **100% autonomous zero-framework companion engine + Local Web Studio (`npm run web`)**, a **Universal Relay & Multi-Protocol Adapter** (`npm run setup`), a **native OneBot v11 bridge** (`npm run onebot`), and a multi-model local gateway (`src/gateway/`).
 
 ---
 
@@ -58,6 +58,7 @@ flowchart TD
 | **DMN Inner Life & Polite Presence** | [`inner-life.mjs`](./src/core/inner-life.mjs), [`ambient-presence.mjs`](./src/core/ambient-presence.mjs) | Date-anchored 5-slot circadian daily rhythm + 6-layer anti-intrusion check-in gates (never interrupts typing, active chats, or quiet hours; weaves un-nudged diary `openLoops` naturally). |
 | **Portable Soul Ledger (`v1`)** | [`soul-ledger.mjs`](./src/runtime/soul-ledger.mjs) | Lossless round-trip export & validated merge/restore of diaries, milestones, monthly chapters, retired habits, and schemas across machines or base models. |
 | **16-Case Golden Replay Benchmark** | [`eval-benchmark.mjs`](./src/core/eval-benchmark.mjs), [`eval-runner.mjs`](./src/runtime/eval-runner.mjs) | Objective 4-dimension benchmark (`Timeline`, `De-AI`, `Autonomy`, `Memory Honesty`) tracking `Question-Ending Rate` and novel-style `RP Stage-Direction` leaks. |
+| **Autonomous Web Studio & CLI Chat** | [`companion-brain.mjs`](./src/core/companion-brain.mjs), [`companion-engine.mjs`](./src/runtime/companion-engine.mjs), [`web-server.mjs`](./src/runtime/web-server.mjs) | 100% standalone, zero-dependency companion runtime with transparent JSONL/Markdown storage (zero opaque binary sessions; guaranteed zero-ghost reset), browser-based **Web Studio (`npm run web`)** with live PAD/Graph/Diary/Soul Ledger inspector + in-browser relay configurator, terminal chat (`npm run chat`), and native OneBot v11 bridge (`npm run onebot`). |
 | **Universal Relay & Multi-Protocol Adapter** | [`provider-compat.mjs`](./src/core/provider-compat.mjs), [`setup-wizard.mjs`](./src/runtime/setup-wizard.mjs) | Beginner-friendly `npm run setup` interactive wizard: paste **any** relay URL (bare domain, `/v1`, `/api/v3`, `/compatible-mode/v1`, `/v1/chat/completions`, `/v1/messages`, `:generateContent`, or local Ollama/LM Studio) & API key (auto-cleans `Bearer `/quotes), auto-discovers models via `/v1/models`, auto-retries relays that reject `response_format`, and runs a 5-token live connectivity check — **no VPN or foreign console required**. |
 | **Multi-Model Gemini 4 Gateway** | [`gemini-gateway.cjs`](./src/gateway/gemini-gateway.cjs), [`gemini-auth.cjs`](./src/gateway/gemini-auth.cjs) | Zero-dependency OpenAI-compatible local gateway supporting **Google AI Studio (`x-goog-api-key`)** & **Vertex AI ADC (`authorized_user` / `service_account` JWT)**, dynamic routing for **Gemini 4 Neon / Hydrogen (4 tiers: `LOW/MEDIUM/HIGH/MAX`)** & **Carbon / Argon (3 tiers)**, and per-call USD/CNY ledger tracking. |
 
@@ -87,10 +88,15 @@ Requires **Node.js 20+**. Zero external npm dependencies.
 git clone https://github.com/Booommmbom/nuomu-soul.git
 cd nuomu-soul
 
-# 1. Run the 1-second end-to-end cognitive lifecycle demo (offline, zero keys)
+# Option A — Launch the Zero-Dependency Local Web Studio (http://127.0.0.1:3460)
+# Paste ANY relay URL + API key right inside the browser UI and start chatting!
+npm run web
+
+# Option B — Run the 1-second offline cognitive lifecycle demo (zero keys)
 npm run demo
 
-# 2. Run the full test suite + zero-leak security & core-purity audit
+# Option C — Terminal chat or full test + zero-leak security audit
+npm run chat
 npm test
 npm run audit:secrets
 ```

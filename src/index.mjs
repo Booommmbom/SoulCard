@@ -14,6 +14,7 @@ export * from "./core/fewshot-anchor.mjs";
 export * from "./core/core-session.mjs";
 export * from "./core/eval-benchmark.mjs";
 export * from "./core/provider-compat.mjs";
+export * from "./core/companion-brain.mjs";
 export {
   COGNITIVE_BRIDGES,
   classifyMetaMemory,

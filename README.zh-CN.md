@@ -21,7 +21,7 @@
 2. **时间轴错乱与续写惯性**：隔了 3 小时再聊，Transformer 仍对着旧历史气泡强行续写（「水放了没？洗完澡没？」），既出戏又白烧 50%–80% 无效上下文 Token。
 3. **厂商与模型绑死**：底模更新换代时，陪伴多年积累的记忆、默契与变化无法干净带走。
 
-**Nuomu Soul** 提供 **14 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全协议中转站自适应层与一键配置向导（`npm run setup`）**、**4 个跨平台运行时编排器**（`src/runtime/`）以及 **多模型本地网关**（`src/gateway/`），开箱即跑，无需 `npm install`。
+**Nuomu Soul** 提供 **15 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**完全自主重建的零框架依赖伴侣引擎与本地 Web Studio（`npm run web`）**、**全协议中转站自适应与一键配置向导（`npm run setup`）**、**原生 OneBot v11 桥接（`npm run onebot`）**以及多模型本地网关（`src/gateway/`），全部开箱即跑，无需 `npm install`。
 
 ---
 
@@ -69,7 +69,7 @@ flowchart TD
 
 ---
 
-## 30 秒极速体验（零依赖、无需任何 API Key）
+## 30 秒极速体验（零依赖、零框架绑死、开箱就能聊）
 
 需要 **Node.js 20+**，无需 `npm install`：
 
@@ -77,10 +77,15 @@ flowchart TD
 git clone https://github.com/Booommmbom/nuomu-soul.git
 cd nuomu-soul
 
-# 1. 一秒离线跑通 8 大认知支柱完整生命周期演示（无需 Key，算法全在本地跑）
+# 方式 A（最推荐）：启动零依赖本地 Web Studio（浏览器打开 http://127.0.0.1:3460）
+# 网页内直接粘贴任意中转站网址与 Key、一键拉取模型并开聊，右侧实时可见 PAD 情绪、双时态图谱与日记！
+npm run web
+
+# 方式 B：一秒离线跑通 8 大认知支柱完整生命周期演示（无需 Key，算法全在本地跑）
 npm run demo
 
-# 2. 运行全部单元测试 + 零泄密与纯核心层安全审计
+# 方式 C：终端实聊 / 跑全量 9 大套单元测试 / 零泄密安全审计
+npm run chat
 npm test
 npm run audit:secrets
 ```
