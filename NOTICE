@@ -1,0 +1,94 @@
+Nuomu Soul
+Copyright (C) 2026 Nuomu Soul Authors (https://github.com/Booommmbom/nuomu-soul)
+Licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+
+================================================================================
+THIRD-PARTY NOTICES, RUNTIME ECOSYSTEM & ACADEMIC ATTRIBUTIONS
+第三方声明、运行时生态与学术参考致谢
+================================================================================
+
+1. Zero Bundled Third-Party Code / 零打包第三方源码
+--------------------------------------------------------------------------------
+This repository contains ONLY original, clean-room JavaScript (ESM/CJS) source
+code, documentation, evaluation scenarios, and tests authored for Nuomu Soul.
+`package.json` declares zero external runtime or build dependencies.
+
+No source code, binaries, model weights, or proprietary assets from any
+third-party repository are copied into or distributed by this repository.
+
+本仓库仅包含为 Nuomu Soul 净室原创编写的代码、文档、评测用例与测试，`package.json`
+零外部依赖，未复制、收录或再分发任何第三方仓库的源码、二进制或模型权重。
+
+
+2. Runtime & Optional Interoperability Ecosystem (NOT Bundled)
+   运行时与可选互操作生态（未打包，由用户自行安装或接入）
+--------------------------------------------------------------------------------
+Nuomu Soul runs on or communicates over standard HTTP/JSON interfaces with the
+following independently licensed projects and services:
+
+  * Node.js (>= 20.0.0)
+    License: MIT License — https://nodejs.org/
+    Used as the standard JavaScript runtime (built-in `node:*` modules only).
+
+  * undici (optional)
+    License: MIT License — https://github.com/nodejs/undici
+    Optionally detected at runtime (`try { require("undici") }`) inside
+    `src/gateway/gemini-gateway.cjs` when an outbound HTTP proxy is configured;
+    not bundled or required.
+
+  * Ollama (optional)
+    License: MIT License — https://github.com/ollama/ollama
+    Communicated with strictly over local HTTP (`127.0.0.1:11434`) as an
+    optional zero-cost local inference backend; not bundled.
+
+  * Wire-Protocol Interoperability (Clean-Room HTTP/JSON Adapters)
+    - OpenAI Chat Completions API format & community OpenAI-compatible relay
+      ecosystems (e.g., One-API / NewAPI / LM Studio / vLLM / SGLang)
+    - Anthropic Messages API format
+    - Google Gemini REST API & Google Cloud Vertex AI / OAuth2 ADC format
+    All trademarks and service names belong to their respective owners.
+    Nuomu Soul is an independent, unofficial project with no affiliation with,
+    or endorsement by, any of the above organizations.
+
+
+3. Academic Papers & Architectural Inspirations (Clean-Room Implementations)
+   学术论文与架构思想参考（独立净室实现，未复用任何原论文代码）
+--------------------------------------------------------------------------------
+Several cognitive algorithms in `src/core/` were independently designed and
+implemented in clean-room JavaScript inspired by published research:
+
+  * HippoRAG — Gutiérrez et al. (2024), "HippoRAG: Neurobiologically Inspired
+    Long-Term Memory for Large Language Models" (arXiv:2405.14831)
+    -> Inspired Personalized PageRank (PPR) multi-hop associative traversal in
+       `src/core/memory-graph-v2.mjs`.
+
+  * Zep / Graphiti — Rasmussen et al. (2025), "Zep: A Temporal Knowledge Graph
+    Architecture for Agent Memory" (arXiv:2501.13956)
+    -> Inspired bi-temporal validity windows (`valid_at` / `invalid_at`) and
+       polarity supersession preserving historical taste changes in
+       `src/core/memory-graph-v2.mjs`.
+
+  * MemGPT / Letta & Sleep-Time Compute — Packer et al. (2023, arXiv:2310.08560);
+    Lin et al. (2025, "Sleep-time Compute: Beyond Inference Scaling at Test-time")
+    -> Inspired off-peak sleep-time episodic consolidation and compact core
+       memory capsules in `src/core/episode-consolidation.mjs` and
+       `src/core/sleep-dream.mjs`.
+
+  * PAD Emotional State Model — Mehrabian & Russell (1974), "An Approach to
+    Environmental Psychology"
+    -> Inspired continuous 3D Pleasure-Arousal-Dominance affective inertia and
+       homeostatic decay in `src/core/emotion-pad.mjs`.
+
+  * Generative Agents — Park et al. (2023), "Generative Agents: Interactive
+    Simulacra of Human Behavior" (arXiv:2304.03442)
+    -> Inspired hierarchical memory reflection and daily circadian rhythm
+       design in `src/core/growth-evolution.mjs` and `src/core/inner-life.mjs`.
+
+
+4. License Text Attribution / 许可证文本署名
+--------------------------------------------------------------------------------
+  * The full text of the GNU General Public License, Version 3 in `LICENSE` is
+    Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>,
+    reproduced verbatim as permitted by the FSF.
+  * The bilingual scope-and-disclaimer appendix layout in `LICENSE` was
+    inspired by open-source compliance conventions in the GitHub community.

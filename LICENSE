@@ -695,7 +695,7 @@ It does NOT grant any rights to, nor imply any affiliation with:
     trademarks referenced for interoperability or benchmarking (all trademarks
     belong to their respective owners);
   * third-party software or runtime environments (e.g. Node.js, Ollama), which
-    remain governed by their own respective licenses.
+    remain governed by their own respective licenses (see `NOTICE`).
 
 This repository intentionally excludes and does NOT distribute any private API
 keys, credentials, model weights, or personal chat transcripts. Users are

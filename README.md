@@ -188,6 +188,7 @@ npm run gateway
 Contributions, new benchmark scenarios, language adapters, and provider gateways are very welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 - **License**: Original source code, documentation, and tooling in this repository are licensed under the **[GNU General Public License v3.0 or later (GPL-3.0-or-later)](./LICENSE)**. Any distributed modified or derivative works must also be released under GPL-3.0-or-later with source code made available.
+- **Third-Party Notices & Academic Acknowledgments**: This repository contains **zero bundled third-party code** and **zero npm dependencies**. All cognitive modules are clean-room original implementations inspired by published research (**HippoRAG**, **Zep/Graphiti**, **MemGPT/Letta & Sleep-Time Compute**, **PAD Emotional State Model**, **Generative Agents**) and interoperate via standard HTTP protocols with optional runtimes (**Node.js**, **Ollama**, **undici**, OpenAI/Anthropic/Gemini APIs). See [NOTICE](./NOTICE) for full attributions and license boundaries.
 - **Scope & Disclaimer**: This is an independent, unofficial open-source project with no affiliation, sponsorship, or endorsement from any LLM vendor or relay service. All trademarks and model rights belong to their respective owners. See the *Note on Scope & Disclaimer* at the bottom of [LICENSE](./LICENSE).
 
 ---
