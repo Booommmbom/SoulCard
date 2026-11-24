@@ -1,6 +1,6 @@
 Nuomu Soul
-Copyright (C) 2026 Nuomu Soul Authors (https://github.com/Booommmbom/nuomu-soul)
-Licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
+Copyright (c) 2026 Nuomu Soul Authors (https://github.com/Booommmbom/nuomu-soul)
+Licensed under the MIT License (see LICENSE).
 
 ================================================================================
 THIRD-PARTY NOTICES, RUNTIME ECOSYSTEM & ACADEMIC ATTRIBUTIONS
@@ -85,10 +85,11 @@ implemented in clean-room JavaScript inspired by published research:
        design in `src/core/growth-evolution.mjs` and `src/core/inner-life.mjs`.
 
 
-4. License Text Attribution / 许可证文本署名
+4. Scope & Disclaimer / 许可范围与免责说明
 --------------------------------------------------------------------------------
-  * The full text of the GNU General Public License, Version 3 in `LICENSE` is
-    Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>,
-    reproduced verbatim as permitted by the FSF.
-  * The bilingual scope-and-disclaimer appendix layout in `LICENSE` was
-    inspired by open-source compliance conventions in the GitHub community.
+  * This repository is an independent, unofficial open-source project licensed
+    under the MIT License. It has no affiliation, sponsorship, or endorsement
+    from any LLM provider or relay service.
+  * All trademarks, brand names, and model rights belong to their respective
+    owners. No API keys, credentials, model weights, or personal private data
+    are stored or distributed in this repository.
