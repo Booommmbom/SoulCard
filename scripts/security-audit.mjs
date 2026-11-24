@@ -21,12 +21,12 @@ const SECRET_PATTERNS = [
   { name: "private_key_block", re: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
   { name: "hardcoded_windows_user_path", re: /[A-Za-z]:[\\/]+Users[\\/]+(?!YOUR_USER|<user>|runner)[A-Za-z0-9_.-]+/i },
   { name: "hardcoded_macos_user_path", re: /\/Users\/(?!YOUR_USER|<user>|runner)[A-Za-z0-9_.-]+\// },
-  { name: "hardcoded_local_workspace_path", re: /[A-Za-z]:[\\/]+Nuomu\b/i },
+  { name: "hardcoded_local_workspace_path", re: /[A-Za-z]:[\\/]+(?:Documents|Desktop)[\\/]+(?:private|secret)/i },
   { name: "hardcoded_gcp_autogen_project", re: /\bgen-lang-client-\d{6,}\b/i },
 ];
 
 // Optional caller-supplied private blocklist via env (never hardcoded into public source)
-const extraBlocklist = String(process.env.NUOMU_AUDIT_BLOCKLIST ?? "")
+const extraBlocklist = String(process.env.SOULCARD_AUDIT_BLOCKLIST ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter((s) => s.length >= 4);
@@ -65,7 +65,7 @@ for (const file of files) {
     }
     for (const lit of extraBlocklist) {
       if (text.toLowerCase().includes(lit.toLowerCase())) {
-        findings.push({ file: rel, kind: "custom_blocklist_match", detail: "matched NUOMU_AUDIT_BLOCKLIST entry" });
+        findings.push({ file: rel, kind: "custom_blocklist_match", detail: "matched SOULCARD_AUDIT_BLOCKLIST entry" });
       }
     }
   }

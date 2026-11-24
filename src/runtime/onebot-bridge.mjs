@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Nuomu Soul — Native Zero-DSH OneBot v11 HTTP Webhook Bridge
+// SoulCard — Native Standalone OneBot v11 HTTP Webhook Bridge
 // Connects NapCat / go-cqhttp / Lagrange or any OneBot v11 client directly to CompanionEngine
-// with ZERO external dependencies and ZERO DSH runtime required.
+// with ZERO external dependencies and ZERO third-party framework runtime required.
 //
 // Usage:
 //   ONEBOT_LISTEN_PORT=3461 ONEBOT_API_URL=http://127.0.0.1:3000 ONEBOT_OWNER_ID=<your_id> node src/runtime/onebot-bridge.mjs
@@ -52,7 +52,7 @@ export function extractOneBotText(event = {}) {
 }
 
 /**
- * Create a standalone Zero-DSH OneBot v11 HTTP event server.
+ * Create a standalone OneBot v11 HTTP event server.
  */
 export function createOneBotBridgeServer({
   engine = new CompanionEngine(),
@@ -83,7 +83,7 @@ export function createOneBotBridgeServer({
     if (req.method === "GET" && req.url === "/health") {
       res.end(JSON.stringify({
         ok: true,
-        bridge: "nuomu-onebot-v11-zero-dsh",
+        bridge: "soulcard-onebot-v11-standalone",
         ownerAllowlistEnabled: Boolean(ownerId),
         hmacVerificationEnabled: Boolean(webhookSecret),
       }));
@@ -173,7 +173,7 @@ if (isMain) {
     process.exit(1);
   });
   server.listen(port, "127.0.0.1", () => {
-    console.log(`Nuomu Zero-DSH OneBot v11 Bridge listening on http://127.0.0.1:${port}`);
+    console.log(`SoulCard Standalone OneBot v11 Bridge listening on http://127.0.0.1:${port}`);
     if (!String(process.env.ONEBOT_OWNER_ID || "").trim()) {
       console.warn("⚠ 安全提示：未设置 ONEBOT_OWNER_ID，当前将响应所有私聊消息；建议在 .env 中设置你的专属账号 ID。");
     }

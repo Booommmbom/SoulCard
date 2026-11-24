@@ -19,7 +19,7 @@ import {
  * Lightweight zero-dependency `.env` parser.
  * Does NOT overwrite already-set process.env variables unless `override: true`.
  */
-export function loadDotEnv(envPath = resolve(process.env.NUOMU_ENV_FILE || join(process.cwd(), ".env")), { override = false } = {}) {
+export function loadDotEnv(envPath = resolve(process.env.SOULCARD_ENV_FILE || join(process.cwd(), ".env")), { override = false } = {}) {
   const parsed = {};
   try {
     if (!envPath || !existsSync(envPath)) return parsed;
@@ -57,7 +57,7 @@ function pickEnv(env, ...names) {
  *   1. Universal Relay (`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` / `LLM_PROTOCOL`)
  *   2. Standard OpenAI-compat (`OPENAI_BASE_URL` / `OPENAI_API_BASE` / `OPENAI_API_KEY` / `OPENAI_MODEL`)
  *   3. Direct provider keys (`DEEPSEEK_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`)
- *   4. Local gateway (`NUOMU_GATEWAY_URL`) or free local Ollama (`OLLAMA_BASE_URL`)
+ *   4. Local gateway (`SOULCARD_GATEWAY_URL`) or free local Ollama (`OLLAMA_BASE_URL`)
  */
 export function resolveLlmConfig({
   baseUrl = "",
@@ -67,7 +67,7 @@ export function resolveLlmConfig({
   envFile = "",
   env = null,
 } = {}) {
-  const fileVals = env ? {} : loadDotEnv(envFile || resolve(process.env.NUOMU_ENV_FILE || join(process.cwd(), ".env")));
+  const fileVals = env ? {} : loadDotEnv(envFile || resolve(process.env.SOULCARD_ENV_FILE || join(process.cwd(), ".env")));
   const src = env || { ...fileVals, ...process.env };
 
   const explicitUrl = normalizeBaseUrl(baseUrl);
@@ -123,7 +123,7 @@ export function resolveLlmConfig({
   }
 
   const gemKey = normalizeApiKey(pickEnv(src, "GEMINI_API_KEY"));
-  if (gemKey && !pickEnv(src, "NUOMU_GATEWAY_URL")) {
+  if (gemKey && !pickEnv(src, "SOULCARD_GATEWAY_URL")) {
     return {
       source: "gemini",
       baseUrl: "https://generativelanguage.googleapis.com",
@@ -145,7 +145,7 @@ export function resolveLlmConfig({
   }
 
   // 4. Local gateway or free local Ollama
-  const gwUrl = normalizeBaseUrl(pickEnv(src, "NUOMU_GATEWAY_URL"));
+  const gwUrl = normalizeBaseUrl(pickEnv(src, "SOULCARD_GATEWAY_URL"));
   if (gwUrl) {
     return {
       source: "local-gateway",
@@ -161,7 +161,7 @@ export function resolveLlmConfig({
     source: "ollama",
     baseUrl: ollamaBase,
     apiKey: "",
-    model: model || pickEnv(src, "NUOMU_LOCAL_MODEL") || "qwen2.5:7b-instruct",
+    model: model || pickEnv(src, "SOULCARD_LOCAL_MODEL") || "qwen2.5:7b-instruct",
     protocol: "ollama",
   };
 }

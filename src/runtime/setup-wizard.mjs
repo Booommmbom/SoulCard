@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Nuomu Soul — Zero-Friction Interactive Setup Wizard (中转站 / 国内直连 / 本地模型 一键配置向导)
+// SoulCard — Zero-Friction Interactive Setup Wizard (中转站 / 国内直连 / 本地模型 一键配置向导)
 // Guides beginners to paste ANY relay URL & API key in any format, auto-detects wire protocol,
 // discovers available models via /v1/models, runs a live 5-token connectivity check, and writes `.env`.
 //
@@ -200,7 +200,7 @@ async function runInteractiveWizard(envPath) {
   const rl = createPromptReader();
   try {
     console.log("\n==============================================================");
-    console.log("  Nuomu Soul 一键配置向导 / Universal Relay Setup Wizard");
+    console.log("  SoulCard 一键配置向导 / Universal Relay Setup Wizard");
     console.log("  无需访问海外官网：支持任意中转站、国内直连 API 与本地模型");
     console.log("==============================================================\n");
 
@@ -323,7 +323,7 @@ if (isMain) {
   const args = parseCliArgs(process.argv.slice(2));
   if (args.help) {
     console.log([
-      "Nuomu Soul Setup Wizard (Universal Relay & Multi-Protocol Configurator)",
+      "SoulCard Setup Wizard (Universal Relay & Multi-Protocol Configurator)",
       "",
       "Interactive mode (recommended for beginners):",
       "  npm run setup",

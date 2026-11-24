@@ -99,11 +99,11 @@ export function buildWeeklyEvolutionPrompt({
     .join("\n");
 
   const system = [
-    "你是「诺姆（26岁，独立桌面空间里与用户 1 对 1 相处的伴侣）」的周度成长复盘器。",
+    "你是「AI 伴侣（与用户 1 对 1 相处的独立生活伴侣）」的周度成长复盘器。",
     "哲学原则：真正的成长不是给 Prompt 越堆越多死规矩，而是把经历消化成自己的阶段认知，并把已经内化或过于刻板的旧规矩自然卸下（减负）。",
     "铁律：",
     "1. 只输出严格合法的 JSON 对象，不要 markdown 围栏，不要解释。",
-    "2. milestone 必须用诺姆自然真实的第一人称口语写，忠实于日记里的真实经历；绝不拍马屁、绝不虚构事件、绝不喊口号。",
+    "2. milestone 必须用真实自然的第一人称口语写，忠实于日记里的真实经历；绝不拍马屁、绝不虚构事件、绝不喊口号。",
     "3. retireHabitIds 只能从下方「当前生效旧习惯清单」里挑选真实存在的 id；如果没有需要卸载的旧习惯，必须返回空数组 []，绝不编造 id。",
   ].join("\n");
 
@@ -116,7 +116,7 @@ export function buildWeeklyEvolutionPrompt({
     "请严格输出以下 JSON 结构：",
     "{",
     '  "theme": "6到16字本周真实主线，如 闹腾里的默契与放松",',
-    '  "milestone": "50到130字诺姆真实第一人称阶段变化或新体悟",',
+    '  "milestone": "50到130字真实第一人称阶段变化或新体悟",',
     '  "emergingInterests": ["0到2个自然浮现的兴趣/关注点，无则空数组"],',
     '  "retireHabitIds": ["已内化或过时刻板、可以自然卸下的旧习惯 id，无则 []"],',
     '  "retireReason": "若卸载了旧习惯，一句话说明原因；否则填 null"',
@@ -255,7 +255,7 @@ export function buildGrowthMilestoneHint(milestones = [], { maxChars = 180 } = {
   const interests = Array.isArray(latest.emergingInterests) && latest.emergingInterests.length > 0
     ? `；近期关注：${latest.emergingInterests.join("、")}`
     : "";
-  const line = `【诺姆阶段成长·${latest.weekKey}】${cleanText(latest.milestone, 120)}${interests}`;
+  const line = `【伴侣阶段成长·${latest.weekKey}】${cleanText(latest.milestone, 120)}${interests}`;
   return line.length <= maxChars ? line : `${line.slice(0, maxChars - 1)}…`;
 }
 
@@ -368,7 +368,7 @@ export function buildMonthlyAutobiographyPrompt({ monthKey, milestones = [], dia
     {
       role: "system",
       content: [
-        "你是诺姆的 L3 月度自传编纂器（只输出合法 JSON，不带代码块围栏）。",
+        "你是伴侣的 L3 月度自传编纂器（只输出合法 JSON，不带代码块围栏）。",
         "任务：把过去几周的成长里程碑与真实日记沉淀为一章稳定、真诚、模型无关的月度自传。",
         "铁律：用第一人称自然口语，忠实于真实经历；禁止AI套话、禁止拍马屁、禁止虚构没发生的事。",
       ].join("\n"),
@@ -432,7 +432,7 @@ export function buildMonthlyChapterHint(chapters = [], { maxChars = 150 } = {}) 
     .sort((a, b) => String(b.monthKey).localeCompare(String(a.monthKey)));
   if (sorted.length === 0) return "";
   const latest = sorted[0];
-  const line = `【诺姆月度自传·${latest.monthKey}《${latest.chapterTitle || "成长"}》】${cleanText(latest.narrative, 100)}`;
+  const line = `【伴侣月度自传·${latest.monthKey}《${latest.chapterTitle || "成长"}》】${cleanText(latest.narrative, 100)}`;
   return line.length <= maxChars ? line : `${line.slice(0, maxChars - 1)}…`;
 }
 
@@ -454,13 +454,13 @@ export function renderMonthlyChapterMarkdown(chapter) {
 }
 
 /**
- * Pure validator for Portable Soul Ledger JSON (nuomu-soul-ledger-v1) prior to import/restore.
+ * Pure validator for Portable Soul Ledger JSON (soulcard.ledger.v1) prior to import/restore.
  */
 export function validateSoulLedgerPayload(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, error: "soul ledger root must be a JSON object" };
   }
-  if (String(payload.schemaVersion || "") !== "nuomu-soul-ledger-v1") {
+  if (String(payload.schemaVersion || "") !== "soulcard.ledger.v1") {
     return { ok: false, error: `unsupported schemaVersion: ${String(payload.schemaVersion || "missing")}` };
   }
   if (!Array.isArray(payload.diaries)) {

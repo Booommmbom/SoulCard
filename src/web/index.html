@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Nuomu Soul Studio — Autonomous Companion Engine</title>
+<title>SoulCard Studio — Autonomous Companion Engine</title>
 <style>
   :root {
     --bg: #0e1116;
@@ -109,14 +109,14 @@
   <section class="chat-pane">
     <header class="topbar">
       <div class="brand">
-        <div class="avatar" id="avatarLetter">诺</div>
+        <div class="avatar" id="avatarLetter">汐</div>
         <div>
           <div class="brand-title">
-            <span id="companionName">诺姆</span>
+            <span id="companionName">小汐</span>
             <span class="pill ok" id="moodPill">松弛自然</span>
             <span class="pill" id="modelPill">未配置</span>
           </div>
-          <div class="meta-line" id="innerLifeLine">Zero-DSH Autonomous Engine v2</div>
+          <div class="meta-line" id="innerLifeLine">SoulCard · Cloud-First Companion Studio</div>
         </div>
       </div>
       <div class="top-actions">
@@ -451,13 +451,13 @@ function appendBubble(role, text, meta = "") {
 function renderState(s) {
   currentState = s;
   const p = s.persona || {};
-  $("companionName").textContent = p.name || "诺姆";
-  $("avatarLetter").textContent = (p.name || "诺").slice(0, 1);
+  $("companionName").textContent = p.name || "小汐";
+  $("avatarLetter").textContent = (p.name || "汐").slice(0, 1);
   $("moodPill").textContent = `${s.pad.label} · P${Math.round(s.pad.pleasure * 100)} A${Math.round(s.pad.arousal * 100)} D${Math.round(s.pad.dominance * 100)}`;
   $("modelPill").textContent = `${s.llm.model} (${s.llm.source})`;
   $("modelPill").className = "pill " + (s.llm.configured ? "ok" : "warn");
   $("setupBanner").classList.toggle("hidden", Boolean(s.llm.configured));
-  $("innerLifeLine").textContent = `Zero-DSH v2 · ${s.innerLife.slotLabel || ""} ${s.innerLife.activity || ""}`;
+  $("innerLifeLine").textContent = `SoulCard · ${s.innerLife.slotLabel || ""} ${s.innerLife.activity || ""}`;
 
   // Memory Cards wall
   renderCardsWall(s.memoryCards || []);
@@ -609,7 +609,7 @@ async function refreshState(renderHistory = false) {
   if (renderHistory) {
     $("messages").innerHTML = "";
     if (!s.recentTurns || s.recentTurns.length === 0) {
-      appendBubble("ambient", `欢迎来到 Nuomu Soul 独立工作室（Zero-DSH v2）。当前记忆库为透明本地文件，支持任意中转站与本地模型。直接发句话试试看！`);
+      appendBubble("ambient", `欢迎来到 SoulCard 独立陪伴工作室！无需显卡、纯云端开箱即聊（支持 Claude / GPT / Gemini / Grok / DeepSeek 与任意中转站），右侧可随时铸造跨模型可携带的「未来伴侣记忆卡」。直接发句话试试看！`);
     } else {
       for (const t of s.recentTurns) {
         appendBubble("user", t.userText);
@@ -629,7 +629,7 @@ async function sendMessage() {
   appendBubble("user", text);
   sending = true;
   $("sendBtn").disabled = true;
-  $("typingIndicator").textContent = `${currentState?.persona?.name || "诺姆"} 正在看消息并思考...`;
+  $("typingIndicator").textContent = `${currentState?.persona?.name || "小汐"} 正在看消息并思考...`;
   try {
     const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ message: text }) });
     if (!res.ok) {
@@ -639,7 +639,7 @@ async function sendMessage() {
     const bubbles = res.pacing?.bubbles || [{ text: res.reply, delayMs: 0 }];
     for (let i = 0; i < bubbles.length; i += 1) {
       if (i > 0 && bubbles[i].delayMs > 0) {
-        $("typingIndicator").textContent = `${currentState?.persona?.name || "诺姆"} 正在输入下一句...`;
+        $("typingIndicator").textContent = `${currentState?.persona?.name || "小汐"} 正在输入下一句...`;
         await sleep(Math.min(1800, bubbles[i].delayMs));
       }
       const meta = i === bubbles.length - 1
@@ -817,7 +817,7 @@ $("exportCardsJsonBtn").onclick = async () => {
     return;
   }
   const dateStr = new Date().toISOString().slice(0, 10);
-  downloadTextFile(`nuomu-memory-card-${dateStr}.json`, JSON.stringify(r.pack, null, 2), "application/json");
+  downloadTextFile(`soulcard-memory-${dateStr}.json`, JSON.stringify(r.pack, null, 2), "application/json");
   $("cardsStatus").className = "status-box ok";
   $("cardsStatus").textContent = `✔ 已导出可携带「未来伴侣记忆卡包」JSON（${r.pack.stats.cardCount} 张记忆卡 · ${r.pack.stats.factCount} 条事实），换任何云端模型或电脑均可插卡还原！`;
 };
@@ -830,7 +830,7 @@ $("exportCardsMdBtn").onclick = async () => {
     return;
   }
   const dateStr = new Date().toISOString().slice(0, 10);
-  downloadTextFile(`nuomu-memory-book-${dateStr}.md`, r.markdown, "text/markdown; charset=utf-8");
+  downloadTextFile(`soulcard-book-${dateStr}.md`, r.markdown, "text/markdown; charset=utf-8");
   $("cardsStatus").className = "status-box ok";
   $("cardsStatus").textContent = `✔ 已导出人类可读《未来伴侣记忆卡册》Markdown（${r.pack.stats.cardCount} 张卡），双击即可阅读收藏！`;
 };
@@ -885,7 +885,7 @@ $("exportSoulBtn").onclick = async () => {
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = blobUrl;
-  a.download = `nuomu-soul-ledger-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `soulcard-ledger-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
   $("growthStatus").className = "status-box ok";

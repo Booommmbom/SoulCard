@@ -17,12 +17,12 @@ const STOP_CONCEPTS = new Set([
   "你们", "他们", "她们", "对方", "别人", "私聊", "重要", "记忆", "正在", "不早",
   "再聊", "晚安", "早安", "你好", "好的", "一起", "这样", "那样", "这里", "那里",
   "刚才", "待会", "喜欢", "很喜欢", "不喜欢", "讨厌", "不是很", "不太", "我不是",
-  "我还是", "诺姆", "这些", "那些", "一些", "一个", "一张", "一张图", "一种", "有点",
+  "我还是", "小汐", "这些", "那些", "一些", "一个", "一张", "一张图", "一种", "有点",
   "感觉", "想要", "以后", "往后", "之前", "之后", "地方", "细说", "打打", "拍拍",
   "留个", "不拿", "给用户", "给我", "给我看", "看图", "聊到", "当时", "半句", "后半句",
   "一句", "下一句", "下一句话", "不用", "老是", "准备", "天天", "家里", "客户", "独立",
   "明天见", "行你", "话说", "太好听", "好听", "不信", "意思", "什么意思", "问号", "表情", "我看", "刚去", "视觉",
-  "fact", "preference", "promise", "nuomu_auto", "auto_qwen", "visual", "reconsolidated"
+  "fact", "preference", "promise", "soulcard_auto", "auto_qwen", "visual", "reconsolidated"
 ]);
 
 const CONCEPT_ALIASES = Object.freeze({
@@ -214,7 +214,7 @@ export function effectiveHalfLifeDays(row = {}, baseHalfLifeDays = 14) {
  */
 export function extractConceptTokens(text, { stripNegation = false } = {}) {
   let raw = String(text ?? "")
-    .replace(/^(?:你|用户|owner|user|诺姆|assistant)\s*[:：]\s*/i, "")
+    .replace(/^(?:你|用户|owner|user|小汐|assistant)\s*[:：]\s*/i, "")
     .trim();
   if (!raw) return [];
   if (stripNegation) {
@@ -533,7 +533,7 @@ export function distillPersonSchema({ events = [], rawRows = [], existingSchema 
     .filter(Boolean);
 
   return {
-    schema: "nuomu.person-schema.v1",
+    schema: "soulcard.person-schema.v1",
     person: "用户",
     updatedAt: now,
     rhythm,
@@ -565,7 +565,7 @@ export function formatPersonSchemaPrompt(schema) {
 const VISUAL_ERROR_REPLY_RE = /(打不开|看不到|看不了|没法看|发不过来|加载失败|出错|超时|系统忙|没收到图|图片损坏|无法查看)/;
 
 /**
- * 9. Visual Episodic Memory: distill Nuomu's visual observation/critique when user shares images.
+ * 9. Visual Episodic Memory: distill the companion's visual observation/critique when user shares images.
  */
 export function buildVisualMemoryRecord({ userText = "", assistantText = "", imageCount = 0, now = Date.now() } = {}) {
   const count = Math.floor(Number(imageCount) || 0);
@@ -743,7 +743,7 @@ function classifyHabitTopic(text) {
 
 /**
  * 12. Conversational Self-Learning: detect natural interaction/style feedback from chat
- * so Nuomu evolves organically through conversation instead of requiring manual prompt edits.
+ * so SoulCard evolves organically through conversation instead of requiring manual prompt edits.
  */
 export function extractInteractionPreference(userText, now = Date.now()) {
   const s = String(userText ?? "").trim();
@@ -759,7 +759,7 @@ export function extractInteractionPreference(userText, now = Date.now()) {
     .replace(/催我/g, "催用户")
     .replace(/烦我/g, "烦用户")
     .replace(/我/g, "用户")
-    .replace(/你/g, "诺姆")
+    .replace(/你/g, "小汐")
     .trim();
 
   // 1. Direct avoidance feedback: "别老催我睡觉了", "不要总叫我宝贝", "说话别那么严肃"
@@ -1009,7 +1009,7 @@ function formatHistoryClockLabel(ts, nowMs) {
 
 /**
  * 13. Format recent core_turns into chronologically grounded history pairs:
- * - Preserves Nuomu's own autonomous proactive messages ("[自主]") with clear self-attribution
+ * - Preserves the companion's own autonomous proactive messages ("[自主]") with clear self-attribution
  *   so she never forgets or denies what she herself just sent.
  * - Inserts concise time markers across 45m+ session gaps so last night's topics are never
  *   mistaken for the current moment.

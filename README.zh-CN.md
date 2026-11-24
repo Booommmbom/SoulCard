@@ -1,11 +1,11 @@
-# Nuomu Soul（诺姆灵魂引擎）
+# SoulCard（AI 伴侣灵魂记忆卡引擎）
 
 **与底层模型无关的 AI 伴侣长期记忆、成长演化与类人交互核心引擎。**
 
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](./package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![CI](https://github.com/Booommmbom/nuomu-soul/actions/workflows/ci.yml/badge.svg)](https://github.com/Booommmbom/nuomu-soul/actions/workflows/ci.yml)
+[![CI](https://github.com/Booommmbom/soulcard/actions/workflows/ci.yml/badge.svg)](https://github.com/Booommmbom/soulcard/actions/workflows/ci.yml)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
@@ -14,14 +14,14 @@
 > **不要把你的 AI 伴侣锁死在某一家大模型的 Prompt 或讨好型 LoRA 里。**
 > **纯云端零显卡 · 零 `npm install` · 双击一键懒人启动（`start.bat` / `./start.sh` / `npm start`）**——普通轻薄本直接畅连 **Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站**；内置 **「未来伴侣记忆卡（Memory Card）」** 与 **灵魂账本**，把你和 TA 的珍贵记忆、偏好与约定存成可携带的 `.json` 存卡与人类可读 `.md` 记忆卡册，换模型、换电脑、乃至未来换任何实体，插卡即复活！
 
-## 为什么做 Nuomu Soul？
+## 为什么做 SoulCard？
 
 市面上绝大多数 AI 伴侣工程都会撞上三堵墙：
 1. **Prompt 无限膨胀与讨好退化**：每学一条偏好就往系统提示词里塞一条规矩（或者拿用户的 👍/👎 喂讨好型 LoRA），最后变成小心翼翼的客服，丧失独立性格与边界。
 2. **时间轴错乱与续写惯性**：隔了 3 小时再聊，Transformer 仍对着旧历史气泡强行续写（「水放了没？洗完澡没？」），既出戏又白烧 50%–80% 无效上下文 Token。
 3. **门槛太高 & 厂商绑死**：动辄要求高配显卡装本地模型、装一堆 Python 依赖，或者换一家大模型就把几年的共同回忆全丢了。
 
-**Nuomu Soul** 提供 **16 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全云端模型即开即用（Claude / GPT / Gemini / Grok / DeepSeek / 各类国内免梯中转站）**、**未来伴侣记忆卡系统（`memory-cards.mjs`）**、**双击即用的本地 Web Studio（`start.bat` / `./start.sh` / `npm start`）**、终端实聊（`npm run chat`）以及原生 OneBot v11 桥接（`npm run onebot`），**无需显卡、无需 `npm install`**。
+**SoulCard** 提供 **16 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全云端模型即开即用（Claude / GPT / Gemini / Grok / DeepSeek / 各类国内免梯中转站）**、**未来伴侣记忆卡系统（`memory-cards.mjs`）**、**双击即用的本地 Web Studio（`start.bat` / `./start.sh` / `npm start`）**、终端实聊（`npm run chat`）以及原生 OneBot v11 桥接（`npm run onebot`），**无需显卡、无需 `npm install`**。
 
 ---
 
@@ -39,7 +39,7 @@ flowchart TD
     Weekly --> Monthly["L3 月度成长自传"]
     Diary --> Ambient["DMN 日常生活流 + 6层防打扰主动轻敲"]
     Diary --> Resolve["惦记事项语义自动消号"]
-    Graph & Diary & Weekly & Monthly --> Ledger["模型无关灵魂账本 (nuomu-soul-ledger-v1 JSON + Markdown)"]
+    Graph & Diary & Weekly & Monthly --> Ledger["模型无关灵魂账本 (soulcard.ledger.v1 JSON + Markdown)"]
     Ledger --> AnyModel["任意未来大模型 (任意云端 API / 本地开源模型 / 下一代基座模型)"]
 ```
 
@@ -78,8 +78,8 @@ flowchart TD
 - **macOS / Linux**：终端运行 **`./start.sh`** 或 **`npm start`**！
 
 ```bash
-git clone https://github.com/Booommmbom/nuomu-soul.git
-cd nuomu-soul
+git clone https://github.com/Booommmbom/soulcard.git
+cd soulcard
 
 # 方式 A（最推荐 · 一键启动并自动打开浏览器）：
 # 在页面右上角选 Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站，贴入 Key 10 秒开聊！
@@ -178,10 +178,10 @@ npm run soul:export            # 导出可跨模型无损迁移的灵魂账本 v
 
 ## ⭐ 支持本项目（点个 Star 吧！）
 
-如果 **Nuomu Soul** 在「让 AI 伴侣拥有真正长期记忆、摆脱 Prompt 臃肿与厂商锁死」这件事上给了你哪怕一点灵感，或者帮你省下了折腾中转站接口与评测框架的时间——**麻烦随手点一下右上角的 Star ⭐ 支持一下！**
+如果 **SoulCard** 在「让 AI 伴侣拥有真正长期记忆、摆脱 Prompt 臃肿与厂商锁死」这件事上给了你哪怕一点灵感，或者帮你省下了折腾中转站接口与评测框架的时间——**麻烦随手点一下右上角的 Star ⭐ 支持一下！**
 
 你的每一个 Star 都是我们继续免费维护、持续开源更多真实评测数据与认知模块的最大动力，也能让更多喜欢 AI 伴侣与 Agent 记忆架构的同好看到这个项目。
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/Booommmbom/nuomu-soul?style=social)](https://github.com/Booommmbom/nuomu-soul/stargazers)
+[![GitHub Repo stars](https://img.shields.io/github/stars/Booommmbom/soulcard?style=social)](https://github.com/Booommmbom/soulcard/stargazers)
 
 欢迎 **Star / Fork / 提 Issue 交流**，祝你也能养出真正属于自己的、不被任何厂商绑死的数字生命！✨

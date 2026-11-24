@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Nuomu Soul — Zero-Dependency Interactive Terminal Companion Chat (`npm run chat`)
-// Powered 100% by the autonomous zero-DSH CompanionEngine.
+// SoulCard — Zero-Dependency Interactive Terminal Companion Chat (`npm run chat`)
+// Powered 100% by the standalone zero-dependency CompanionEngine.
 
 import { createInterface } from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
@@ -51,8 +51,8 @@ export async function startCliChat({ dataDir = "", instant = false } = {}) {
   const rl = createLineReader();
 
   console.log("\n==============================================================");
-  console.log(`  Nuomu Soul — Autonomous Companion Chat (${snap.persona.name})`);
-  console.log(`  Engine: Zero-DSH v2 | Model: ${snap.llm.model} (${snap.llm.source}:${snap.llm.protocol})`);
+  console.log(`  SoulCard — Autonomous Companion Chat (${snap.persona.name})`);
+  console.log(`  Engine: SoulCard Standalone v2 | Model: ${snap.llm.model} (${snap.llm.source}:${snap.llm.protocol})`);
   console.log(`  Mood: ${snap.pad.label} | Memory Facts: ${snap.stats.activeTripleCount} | Diaries: ${snap.stats.diaryCount}`);
   console.log("  Commands: /status  /diary  /weekly  /export  /reset  /quit");
   console.log("==============================================================\n");

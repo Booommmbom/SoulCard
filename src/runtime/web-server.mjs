@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Nuomu Soul — Zero-Dependency Autonomous Local Web Studio (`npm run web`)
-// Binds strictly to 127.0.0.1 (default port 3460). Zero DSH, zero external packages,
+// SoulCard — Zero-Dependency Autonomous Local Web Studio (`npm run web`)
+// Binds strictly to 127.0.0.1 (default port 3460). Zero external packages,
 // works 100% offline for UI assets and connects seamlessly to ANY relay / domestic API / local Ollama.
 
 import http from "node:http";
@@ -82,7 +82,7 @@ async function readJsonBody(req) {
 }
 
 /**
- * Create the standalone Nuomu Web Studio HTTP server.
+ * Create the standalone SoulCard Web Studio HTTP server.
  */
 export function createWebStudioServer({
   engine = new CompanionEngine(),
@@ -103,7 +103,7 @@ export function createWebStudioServer({
 
       // Static single-file Web Studio UI (works 100% offline, zero CDN links)
       if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
-        const html = existsSync(WEB_HTML_PATH) ? readFileSync(WEB_HTML_PATH, "utf8") : "<h1>Nuomu Soul Studio</h1>";
+        const html = existsSync(WEB_HTML_PATH) ? readFileSync(WEB_HTML_PATH, "utf8") : "<h1>SoulCard Studio</h1>";
         res.statusCode = 200;
         setSecurityHeaders(res, { isHtml: true });
         res.setHeader("content-type", "text/html; charset=utf-8");
@@ -117,7 +117,7 @@ export function createWebStudioServer({
         sendJson(res, 200, {
           ok: true,
           engine: snap.engine,
-          zeroDsh: true,
+          standalone: true,
           configured: snap.llm.configured,
           model: snap.llm.model,
           protocol: snap.llm.protocol,
@@ -407,15 +407,15 @@ function openInDefaultBrowser(url) {
 
 const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
 if (isMain) {
-  const requestedPort = Number(process.env.NUOMU_WEB_PORT || 3460);
-  const autoOpen = process.argv.includes("--open") || process.env.NUOMU_AUTO_OPEN === "1";
+  const requestedPort = Number(process.env.SOULCARD_WEB_PORT || 3460);
+  const autoOpen = process.argv.includes("--open") || process.env.SOULCARD_AUTO_OPEN === "1";
   const engine = new CompanionEngine();
   const server = createWebStudioServer({ engine });
   listenWithAutoFallback(server, requestedPort).then((boundPort) => {
     const snap = engine.getSnapshot();
     const url = `http://127.0.0.1:${boundPort}`;
     console.log("\n==============================================================");
-    console.log("  Nuomu Soul — Cloud-First Zero-GPU Companion Studio");
+    console.log("  SoulCard — Cloud-First Zero-GPU Companion Studio");
     if (boundPort !== requestedPort) {
       console.log(`  Notice         : Port ${requestedPort} is busy, auto-switched to ${boundPort}`);
     }

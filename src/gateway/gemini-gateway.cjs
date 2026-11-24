@@ -9,7 +9,7 @@ const { createVertexAuthProvider } = require("./gemini-auth.cjs");
 // Auto-load `.env` without external dependencies (never overwrites already-set env vars)
 (function loadGatewayDotEnv() {
   try {
-    const envPath = path.resolve(process.env.NUOMU_ENV_FILE || path.join(process.cwd(), ".env"));
+    const envPath = path.resolve(process.env.SOULCARD_ENV_FILE || path.join(process.cwd(), ".env"));
     if (!fs.existsSync(envPath)) return;
     for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
       const trimmed = line.trim();
@@ -33,13 +33,13 @@ try {
   if (typeof u.fetch === "function") undiciFetch = u.fetch;
 } catch {}
 
-const ROOT = path.resolve(process.env.NUOMU_ROOT || process.cwd());
-const DATA_DIR = path.resolve(process.env.NUOMU_DATA_DIR || path.join(ROOT, "data"));
-const PORT = Number(process.env.NUOMU_VERTEX_PORT || 3478);
+const ROOT = path.resolve(process.env.SOULCARD_ROOT || process.cwd());
+const DATA_DIR = path.resolve(process.env.SOULCARD_DATA_DIR || path.join(ROOT, "data"));
+const PORT = Number(process.env.SOULCARD_VERTEX_PORT || 3478);
 const HOST = "127.0.0.1";
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || "your-gcp-project-id";
 const LOCATION = process.env.GOOGLE_CLOUD_LOCATION || "global";
-const DEFAULT_MODEL = process.env.NUOMU_VERTEX_MODEL || "gemini-4-argon";
+const DEFAULT_MODEL = process.env.SOULCARD_VERTEX_MODEL || "gemini-4-argon";
 const GEMINI4_MODELS = {
   "gemini-4-neon": { tiers: ["LOW", "MEDIUM", "HIGH", "MAX"], maxOutputTokens: 65536, usdPerM: { input: 3.0, cached: 0.3, output: 15.0 } },
   "gemini-4-hydrogen": { tiers: ["LOW", "MEDIUM", "HIGH", "MAX"], maxOutputTokens: 65536, usdPerM: { input: 1.5, cached: 0.15, output: 7.5 } },
@@ -89,7 +89,7 @@ function recordGatewayUsage({ model, thinking, caller, usage, endpoint }) {
 }
 
 function resolveModel(requested) {
-  const cleaned = String(requested ?? "").trim().replace(/^(?:models\/|google\/|nuomu-vertex-gateway\/)/i, "");
+  const cleaned = String(requested ?? "").trim().replace(/^(?:models\/|google\/|soulcard-gemini-gateway\/)/i, "");
   if (cleaned && Object.prototype.hasOwnProperty.call(GEMINI4_MODELS, cleaned)) return cleaned;
   return Object.prototype.hasOwnProperty.call(GEMINI4_MODELS, DEFAULT_MODEL) ? DEFAULT_MODEL : "gemini-4-argon";
 }
@@ -134,7 +134,7 @@ function loadEnv(file) {
 }
 loadEnv(path.join(ROOT, ".env"));
 
-const VERTEX_PROXY = process.env.NUOMU_VERTEX_PROXY || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY || "";
+const VERTEX_PROXY = process.env.SOULCARD_VERTEX_PROXY || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY || "";
 const vertexDispatcher = ProxyAgent && VERTEX_PROXY ? new ProxyAgent(VERTEX_PROXY) : undefined;
 const authProvider = createVertexAuthProvider({
   env: process.env,
@@ -152,7 +152,7 @@ function cors(req, res) {
     res.setHeader("access-control-allow-origin", origin);
     res.setHeader("vary", "Origin");
   }
-  res.setHeader("access-control-allow-headers", "content-type, authorization, x-nuomu-caller");
+  res.setHeader("access-control-allow-headers", "content-type, authorization, x-soulcard-caller");
   res.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
 }
 
@@ -282,7 +282,7 @@ function toGemini(body) {
   const generationConfig = {
     maxOutputTokens: Math.min(Number(body.max_tokens ?? body.max_completion_tokens ?? 8192), spec.maxOutputTokens),
   };
-  // DSH sends OpenAI-style reasoning_effort. Gemini 4 exposes thinkingConfig.thinkingLevel:
+  // Clients send OpenAI-style reasoning_effort. Gemini 4 exposes thinkingConfig.thinkingLevel:
   // Neon & Hydrogen support 4 tiers (LOW/MEDIUM/HIGH/MAX); Carbon & Argon support 3 tiers (LOW/MEDIUM/HIGH).
   const thinkingLevel = resolveThinkingLevel(body.reasoning_effort ?? body.reasoningEffort ?? "high", modelId);
   generationConfig.thinkingConfig = { thinkingLevel };
@@ -388,7 +388,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/health") {
       const status = authProvider.detectStatus();
-      return json(req, res, 200, { ok: true, provider: "nuomu-vertex-gateway", model: DEFAULT_MODEL, models: Object.keys(GEMINI4_MODELS), project: status.project, location: LOCATION, authMode: status.authMode, endpoint: status.endpoint, configured: status.configured });
+      return json(req, res, 200, { ok: true, provider: "soulcard-gemini-gateway", model: DEFAULT_MODEL, models: Object.keys(GEMINI4_MODELS), project: status.project, location: LOCATION, authMode: status.authMode, endpoint: status.endpoint, configured: status.configured });
     }
     if (req.method === "GET" && url.pathname === "/v1/models") {
       const now = Math.floor(Date.now() / 1000);
@@ -398,7 +398,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const reqModel = resolveModel(body.model);
     const reqThinking = resolveThinkingLevel(body.reasoning_effort ?? body.reasoningEffort ?? "high", reqModel);
-    const caller = String(req.headers["x-nuomu-caller"] || (body.stream === true ? "chat" : "api")).trim();
+    const caller = String(req.headers["x-soulcard-caller"] || (body.stream === true ? "chat" : "api")).trim();
     log(`request model=${reqModel} thinking=${reqThinking} caller=${caller} stream=${body.stream === true} messages=${Array.isArray(body.messages) ? body.messages.length : 0} tools=${Array.isArray(body.tools) ? body.tools.length : 0}`);
     const { response } = await callVertex(body);
     const st = authProvider.detectStatus();
@@ -417,7 +417,7 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
-      console.error(`✖ Port ${PORT} is already in use. Set NUOMU_VERTEX_PORT to a free port.`);
+      console.error(`✖ Port ${PORT} is already in use. Set SOULCARD_VERTEX_PORT to a free port.`);
       process.exit(1);
     }
     console.error(err);

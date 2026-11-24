@@ -1,7 +1,7 @@
-// Nuomu Soul — 100% Autonomous Zero-DSH Companion Runtime Engine
+// SoulCard — 100% Autonomous Standalone Companion Runtime Engine
 // Zero external dependencies, zero opaque zstd session archives, zero vendor lock-in.
 // Persists all cognitive state transparently as human-readable JSONL / JSON / Markdown
-// under `NUOMU_DATA_DIR`, directly compatible with daily/weekly/monthly/soul-ledger workflows.
+// under `SOULCARD_DATA_DIR`, directly compatible with daily/weekly/monthly/soul-ledger workflows.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -84,8 +84,8 @@ export class CompanionEngine {
     llmOverrides = null,
   } = {}) {
     loadDotEnv(envPath || undefined);
-    this.dataDir = resolve(dataDir || process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
-    this.envPath = resolve(envPath || process.env.NUOMU_ENV_FILE || join(process.cwd(), ".env"));
+    this.dataDir = resolve(dataDir || process.env.SOULCARD_DATA_DIR || join(process.cwd(), "data"));
+    this.envPath = resolve(envPath || process.env.SOULCARD_ENV_FILE || join(process.cwd(), ".env"));
     this.fetchFn = fetchFn;
     this.llmOverrides = llmOverrides || {};
     this._writeQueue = Promise.resolve();
@@ -233,7 +233,7 @@ export class CompanionEngine {
           maxTokens: 900,
           jsonMode: true,
           timeoutMs: 60_000,
-          extraHeaders: { "x-nuomu-caller": "memory-card-mint" },
+          extraHeaders: { "x-soulcard-caller": "memory-card-mint" },
           fetchFn: this.fetchFn,
         }
       );
@@ -398,8 +398,8 @@ export class CompanionEngine {
     const cfg = this.getLlmConfig();
     return {
       ok: true,
-      engine: "nuomu-autonomous-v2",
-      zeroDsh: true,
+      engine: "soulcard-autonomous-v2",
+      standalone: true,
       now,
       dataDir: this.dataDir,
       persona,
@@ -439,7 +439,7 @@ export class CompanionEngine {
   }
 
   /**
-   * Run one full autonomous companion conversation turn (zero DSH!, serialized against concurrent races).
+   * Run one full autonomous companion conversation turn (serialized against concurrent races).
    */
   async chat(userText, opts = {}) {
     return await this._enqueue(() => this._chatUnlocked(userText, opts));
@@ -517,7 +517,7 @@ export class CompanionEngine {
       maxTokens: 1024,
       jsonMode: false,
       timeoutMs: 75_000,
-      extraHeaders: { "x-nuomu-caller": "autonomous-chat" },
+      extraHeaders: { "x-soulcard-caller": "autonomous-chat" },
       fetchFn: this.fetchFn,
     });
 

@@ -1,4 +1,4 @@
-// Nuomu Soul — Pure Zero-IO Companion Brain Orchestrator (Zero-DSH Autonomous Core)
+// SoulCard — Pure Zero-IO Companion Brain Orchestrator (Standalone Autonomous Core)
 // Composes all cognitive pillars into a deterministic, testable, vendor-agnostic prompt
 // assembly & reply post-processing pipeline without touching disk, SQLite, or network.
 
@@ -13,7 +13,7 @@ import { computeHumanPacingPlan } from "./reply-pacing.mjs";
 import { buildAntiQuestionStreakHint, formatClockTag, partitionWorkingHistory } from "./timeline-sync.mjs";
 
 export const DEFAULT_PERSONA = Object.freeze({
-  name: "诺姆",
+  name: "小汐",
   partnerName: "你",
   role: "住在电脑里的独立生活伴侣与默契老友",
   voiceStyle: "说话像真实微信私聊：自然、简短、口语化、有温度也有小主见和小脾气；绝不说客服套话、绝不列123清单、绝不写小说式括号动作旁白。",
@@ -31,8 +31,8 @@ export function cleanCompanionReply(rawText = "") {
   let s = String(rawText ?? "").trim();
   if (!s) return "";
   s = s.replace(RP_STAGE_RE, "").replace(/\n{3,}/g, "\n\n").trim();
-  // Remove accidental leading speaker label such as "诺姆：" or "Assistant:"
-  s = s.replace(/^(?:诺姆|assistant|ai|bot)\s*[:：]\s*/i, "").trim();
+  // Remove accidental leading speaker label such as "小汐：" or "Assistant:"
+  s = s.replace(/^(?:小汐|伴侣|assistant|ai|bot)\s*[:：]\s*/i, "").trim();
   return s;
 }
 

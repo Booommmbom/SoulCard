@@ -1,6 +1,6 @@
 // Inner Life & Day-Cycle Continuity Engine (Prefrontal DMN Simulation)
 // Pure core module: ZERO fs / sqlite / channel / network imports (strictly passes test-core-purity).
-// Gives Nuomu a coherent, date-anchored, time-advancing personal day so she never contradicts
+// Gives SoulCard a coherent, date-anchored, time-advancing personal day so she never contradicts
 // herself when asked "what have you been doing today?".
 
 const MORNING_POOL = [
@@ -78,7 +78,7 @@ function normalizedClockHour(now = Date.now()) {
 
 /**
  * Generate or preserve today's coherent 5-slot inner life trajectory.
- * Same local date always preserves existing slots so Nuomu never contradicts her own day.
+ * Same local date always preserves existing slots so SoulCard never contradicts her own day.
  */
 export function ensureDailyInnerLife({ now = Date.now(), existingLife = null, dreamBlocks = null } = {}) {
   const date = localDateKey(now);
@@ -94,7 +94,7 @@ export function ensureDailyInnerLife({ now = Date.now(), existingLife = null, dr
     };
   }
 
-  const seedBase = deterministicHash(`nuomu-inner-life:${date}`);
+  const seedBase = deterministicHash(`soulcard-inner-life:${date}`);
   const slots = SLOTS_META.map((meta, idx) => {
     const pick = (seedBase + idx * 7919) % meta.pool.length;
     return {
@@ -122,7 +122,7 @@ export function ensureDailyInnerLife({ now = Date.now(), existingLife = null, dr
 }
 
 /**
- * Record a real shared moment from today's chat into Nuomu's daily life log.
+ * Record a real shared moment from today's chat into the companion's daily life log.
  */
 export function recordSharedHighlight(lifeState, { text = "", now = Date.now() } = {}) {
   const base = ensureDailyInnerLife({ now, existingLife: lifeState });
@@ -199,7 +199,7 @@ export function snapshotInnerLife(lifeState, now = Date.now()) {
 export function formatInnerLifeForPrompt(lifeState, now = Date.now(), maxChars = 115) {
   const snap = snapshotInnerLife(lifeState, now);
   if (!snap?.current?.activity) return "";
-  const parts = [`此刻诺姆日常[${snap.current.label}]：${snap.current.activity}`];
+  const parts = [`此刻小汐日常[${snap.current.label}]：${snap.current.activity}`];
   if (snap.completed.length > 0) {
     const prev = snap.completed[snap.completed.length - 1];
     parts.push(`早些时候(${prev.label})做过：${prev.activity.slice(0, 26)}`);

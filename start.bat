@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title Nuomu Soul — Cloud-First AI Companion Studio
+title SoulCard — Cloud-First AI Companion Studio
 echo.
 echo ==============================================================
-echo   Nuomu Soul — 一键懒人启动 (零依赖 · 无需显卡 · 纯云端全模型)
+echo   SoulCard — 一键懒人启动 (零依赖 · 无需显卡 · 纯云端全模型)
 echo   支持 Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站
 echo ==============================================================
 echo.

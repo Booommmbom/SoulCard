@@ -65,14 +65,14 @@ function createVertexAuthProvider({ env = process.env, dispatcher = undefined, f
   let tokenCache = { accessToken: "", expiresAt: 0, sourcePath: "" };
 
   function resolveProject(adc) {
-    return String(env.NUOMU_VERTEX_PROJECT || "").trim()
+    return String(env.SOULCARD_VERTEX_PROJECT || "").trim()
       || String(adc?.data?.quota_project_id || adc?.data?.project_id || "").trim()
       || String(env.GOOGLE_CLOUD_PROJECT || "").trim()
       || defaultProject;
   }
 
   function resolveEndpointMode() {
-    const raw = String(env.NUOMU_VERTEX_ENDPOINT_MODE || "").trim().toLowerCase();
+    const raw = String(env.SOULCARD_VERTEX_ENDPOINT_MODE || "").trim().toLowerCase();
     if (raw === "aistudio" || raw === "ai-studio" || raw === "studio" || raw === "gla") return "aistudio";
     if (raw === "vertex" || raw === "adc" || raw === "vertex-adc") return "vertex";
     if (String(env.GEMINI_API_KEY || env.GOOGLE_AI_STUDIO_API_KEY || "").trim()) return "aistudio";

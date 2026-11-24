@@ -1,6 +1,6 @@
-# Contributing to Nuomu Soul
+# Contributing to SoulCard
 
-Thank you for your interest in contributing to **Nuomu Soul**!
+Thank you for your interest in contributing to **SoulCard**!
 
 ## Core Engineering Standards
 

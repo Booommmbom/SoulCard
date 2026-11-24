@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "=============================================================="
-echo "  Nuomu Soul — One-Click Lazy Launcher (Zero Deps · Cloud-First)"
+echo "  SoulCard — One-Click Lazy Launcher (Zero Deps · Cloud-First)"
 echo "  Supports Claude / GPT / Gemini / Grok / DeepSeek / Any Relay"
 echo "=============================================================="
 echo ""

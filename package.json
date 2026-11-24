@@ -1,16 +1,16 @@
 {
-  "name": "nuomu-soul",
+  "name": "soulcard",
   "version": "1.0.0",
   "description": "Model-agnostic long-term memory, developmental growth, and human-like presence engine for AI companions.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://github.com/Booommmbom/nuomu-soul#readme",
+  "homepage": "https://github.com/Booommmbom/soulcard#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Booommmbom/nuomu-soul.git"
+    "url": "git+https://github.com/Booommmbom/soulcard.git"
   },
   "bugs": {
-    "url": "https://github.com/Booommmbom/nuomu-soul/issues"
+    "url": "https://github.com/Booommmbom/soulcard/issues"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -53,17 +53,20 @@
     "eval": "node src/runtime/eval-runner.mjs"
   },
   "keywords": [
+    "soulcard",
     "ai-companion",
+    "memory-card",
+    "llm-memory",
     "long-term-memory",
     "knowledge-graph",
     "bitemporal",
     "hipporag",
-    "llm-agents",
+    "claude",
+    "gpt",
     "gemini",
+    "grok",
     "deepseek",
-    "ollama",
-    "memory-pyramid",
-    "soul-ledger",
+    "zero-dependency",
     "pad-emotion"
   ]
 }

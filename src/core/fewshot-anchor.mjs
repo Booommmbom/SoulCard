@@ -18,7 +18,7 @@ const ROBOTIC_FILTER_RE = /(作为(?:一个)?AI|语言模型|您好|非常理解
 const PHATIC_ONLY_RE = /^(?:嗯+|哦+|好+|行|在|我在|嗯，我在。?|收到|知道了|好的)[，。！!？?~～]*$/;
 
 /**
- * Curated ultra-natural Nuomu-Cai baseline anchors per scenario.
+ * Curated ultra-natural SoulCard-Cai baseline anchors per scenario.
  * Short, rhythmic, zero assistant-speak, high conversational breath.
  */
 export const CURATED_STYLE_ANCHORS = Object.freeze({
@@ -80,7 +80,7 @@ export function isHighNaturalnessTurn(userText, replyText) {
 }
 
 /**
- * Dynamically harvest high-naturalness real (Cai -> Nuomu) pairs from recent private history.
+ * Dynamically harvest high-naturalness real (Cai -> SoulCard) pairs from recent private history.
  */
 export function harvestOrganicAnchors(recentRows = [], limit = 6) {
   if (!Array.isArray(recentRows) || recentRows.length < 2) return [];
@@ -91,8 +91,8 @@ export function harvestOrganicAnchors(recentRows = [], limit = 6) {
     const prev = recentRows[i - 1];
     const currName = String(curr?.name ?? curr?.role ?? "").toLowerCase();
     const prevName = String(prev?.name ?? prev?.role ?? "").toLowerCase();
-    const isAssistant = currName.includes("诺姆") || currName === "assistant";
-    const isUser = !prevName.includes("诺姆") && prevName !== "assistant";
+    const isAssistant = currName.includes("小汐") || currName === "assistant";
+    const isUser = !prevName.includes("小汐") && prevName !== "assistant";
     if (!isAssistant || !isUser) continue;
 
     const u = String(prev?.text ?? "").trim();
@@ -153,7 +153,7 @@ export function buildDepthRecencyAnchor({
     parts.push(`此刻状态[${desc.label}]：${desc.toneHint}`);
   }
 
-  // 2. Nuomu's coherent inner-life day trajectory (Prefrontal DMN)
+  // 2. the companion's coherent inner-life day trajectory (Prefrontal DMN)
   if (innerLife && typeof innerLife === "object") {
     const lifeLine = formatInnerLifeForPrompt(innerLife, now, 86);
     if (lifeLine) parts.push(lifeLine);
@@ -170,13 +170,13 @@ export function buildDepthRecencyAnchor({
   const { anchors } = selectStyleAnchors({ text, pad, now, harvested, limit: 2 });
   if (anchors.length > 0) {
     const first = anchors[0];
-    const sample1 = `语感示范：用户「${first.u}」→诺姆「${first.a}」`;
+    const sample1 = `语感示范：用户「${first.u}」→小汐「${first.a}」`;
     const baseLen = parts.join("；").length;
     if (baseLen + sample1.length + 2 <= budget) {
       parts.push(sample1);
       if (anchors.length > 1) {
         const second = anchors[1];
-        const sample2 = `用户「${second.u}」→诺姆「${second.a}」`;
+        const sample2 = `用户「${second.u}」→小汐「${second.a}」`;
         if (parts.join("；").length + sample2.length + 2 <= budget) {
           parts.push(sample2);
         }

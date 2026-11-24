@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Model-agnostic Daily Sleep-Time Consolidation & Portable Soul Ledger runner.
-// Uses pure core packages/nuomu-core/episode-consolidation.mjs.
+// Uses pure core packages/soulcard-core/episode-consolidation.mjs.
 // Never opens data/memory.db directly (keeps auditMemoryWritePaths 100% green);
 // verified facts are persisted to growth-diary.jsonl and synced into memory_triples
-// by authorized runtime module dsh-onebot/lib/memory-ops.mjs.
+// Keeps transparent plain-text state logs isolated from any external framework.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -22,11 +22,11 @@ import {
 import { callUnifiedLlm, loadDotEnv, resolveLlmConfig } from "./llm-client.mjs";
 
 loadDotEnv();
-const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
-const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
+const DEFAULT_DATA_DIR = resolve(process.env.SOULCARD_DATA_DIR || join(process.cwd(), "data"));
+const DEFAULT_GATEWAY_URL = process.env.SOULCARD_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
-const DEFAULT_MODEL = process.env.NUOMU_CONSOLIDATION_MODEL || "gemini-4-hydrogen";
-const DEFAULT_EFFORT = process.env.NUOMU_CONSOLIDATION_EFFORT || "low";
+const DEFAULT_MODEL = process.env.SOULCARD_CONSOLIDATION_MODEL || "gemini-4-hydrogen";
+const DEFAULT_EFFORT = process.env.SOULCARD_CONSOLIDATION_EFFORT || "low";
 
 const MODEL_CNY_PER_MILLION = {
   "gemini-4-hydrogen": { input: 10.8, output: 54 },
@@ -103,7 +103,7 @@ async function callConsolidationLlm(messages, {
       maxTokens,
       jsonMode: true,
       timeoutMs,
-      extraHeaders: { "x-nuomu-caller": "daily-consolidate" },
+      extraHeaders: { "x-soulcard-caller": "daily-consolidate" },
       fetchFn,
     });
     if (unified.ok && unified.content) {
@@ -123,7 +123,7 @@ async function callConsolidationLlm(messages, {
     try {
       const res = await fetchFn(gatewayUrl, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-nuomu-caller": "daily-consolidate" },
+        headers: { "content-type": "application/json", "x-soulcard-caller": "daily-consolidate" },
         body: JSON.stringify({
           model: gatewayModel,
           reasoning_effort: effort,
@@ -141,7 +141,7 @@ async function callConsolidationLlm(messages, {
         if (content) {
           return {
             ok: true,
-            provider: "nuomu-vertex-gateway",
+            provider: "soulcard-gemini-gateway",
             model: data?.model || gatewayModel,
             effort,
             content,
@@ -206,7 +206,7 @@ function pickTargetDate(rawRows, existingDates, { explicitDate = "", now = Date.
 }
 
 export async function runDailyConsolidation(options = {}) {
-  const dataDir = String(options.dataDir || process.env.NUOMU_DATA_DIR || DEFAULT_DATA_DIR);
+  const dataDir = String(options.dataDir || process.env.SOULCARD_DATA_DIR || DEFAULT_DATA_DIR);
   const now = Number(options.now || Date.now());
   const minMessages = Math.max(1, Number(options.minMessages ?? 6));
   const force = Boolean(options.force);
@@ -331,7 +331,7 @@ export async function runDailyConsolidation(options = {}) {
     .filter((o) => !o.expiresAt || Number(o.expiresAt) > now)
     .slice(-10);
   const ledger = {
-    schemaVersion: "nuomu-growth-ledger-v1",
+    schemaVersion: "soulcard-growth-ledger-v1",
     updatedAt: now,
     totalDays: merged.length,
     latestDateKey: merged[merged.length - 1]?.dateKey || dateKey,
@@ -366,7 +366,7 @@ export function exportPortableSoulLedger({ dataDir = DEFAULT_DATA_DIR, now = Dat
     personSchema,
     dreamBlocks,
     triples: [],
-    identityVersion: "nuomu-v1",
+    identityVersion: "soulcard-v1",
     now,
   });
   const exportPath = join(dataDir, "state", "soul-ledger-export.json");

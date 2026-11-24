@@ -1,5 +1,5 @@
-Nuomu Soul
-Copyright (c) 2026 Nuomu Soul Authors (https://github.com/Booommmbom/nuomu-soul)
+SoulCard
+Copyright (c) 2026 SoulCard Authors (https://github.com/Booommmbom/soulcard)
 Licensed under the MIT License (see LICENSE).
 
 ================================================================================
@@ -10,20 +10,20 @@ THIRD-PARTY NOTICES, RUNTIME ECOSYSTEM & ACADEMIC ATTRIBUTIONS
 1. Zero Bundled Third-Party Code / 零打包第三方源码
 --------------------------------------------------------------------------------
 This repository contains ONLY original, clean-room JavaScript (ESM/CJS) source
-code, documentation, evaluation scenarios, and tests authored for Nuomu Soul.
+code, documentation, evaluation scenarios, and tests authored for SoulCard.
 `package.json` declares zero external runtime or build dependencies.
 
 No source code, binaries, model weights, or proprietary assets from any
 third-party repository are copied into or distributed by this repository.
 
-本仓库仅包含为 Nuomu Soul 净室原创编写的代码、文档、评测用例与测试，`package.json`
+本仓库仅包含为 SoulCard 净室原创编写的代码、文档、评测用例与测试，`package.json`
 零外部依赖，未复制、收录或再分发任何第三方仓库的源码、二进制或模型权重。
 
 
 2. Runtime & Optional Interoperability Ecosystem (NOT Bundled)
    运行时与可选互操作生态（未打包，由用户自行安装或接入）
 --------------------------------------------------------------------------------
-Nuomu Soul runs on or communicates over standard HTTP/JSON interfaces with the
+SoulCard runs on or communicates over standard HTTP/JSON interfaces with the
 following independently licensed projects and services:
 
   * Node.js (>= 20.0.0)
@@ -47,7 +47,7 @@ following independently licensed projects and services:
     - Anthropic Messages API format
     - Google Gemini REST API & Google Cloud Vertex AI / OAuth2 ADC format
     All trademarks and service names belong to their respective owners.
-    Nuomu Soul is an independent, unofficial project with no affiliation with,
+    SoulCard is an independent, unofficial project with no affiliation with,
     or endorsement by, any of the above organizations.
 
 

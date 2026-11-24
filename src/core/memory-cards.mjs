@@ -1,12 +1,12 @@
-// Nuomu Soul — Portable Future-Companion Memory Card & Anti-Corruption Core
+// SoulCard — Portable Future-Companion Memory Card & Anti-Corruption Core
 // Pure zero-IO core module: ZERO fs / sqlite / path / http / network imports.
 // Works on Node 20/22+, Deno, Bun, or Browser with zero GPU and zero Ollama required.
 //
-// Lets users mint, pin, search, export (.nuomu-card.json + readable Markdown book),
+// Lets users mint, pin, search, export (.soulcard.json + readable Markdown book),
 // and carry their AI companion's memories cleanly across Claude, GPT, Gemini, Grok,
 // DeepSeek, or any future model/body.
 
-export const MEMORY_CARD_SCHEMA = "nuomu.memory-card-pack.v1";
+export const MEMORY_CARD_SCHEMA = "soulcard.pack.v1";
 
 export const CARD_CATEGORIES = Object.freeze([
   { id: "pinned", label: "挚爱置顶", icon: "★" },
@@ -251,7 +251,7 @@ export function buildMemoryCardPack({
     .map((c) => normalizeMemoryCard(c, now));
 
   const safePersona = {
-    name: String(persona?.name || "诺姆"),
+    name: String(persona?.name || "小汐"),
     partnerName: String(persona?.partnerName || "你"),
     role: String(persona?.role || ""),
     voiceStyle: String(persona?.voiceStyle || ""),
@@ -309,13 +309,13 @@ export function renderMemoryCardBookMarkdown(pack) {
   const p = pack?.persona || {};
   const catMap = Object.fromEntries(CARD_CATEGORIES.map((c) => [c.id, `${c.icon} ${c.label}`]));
   const lines = [
-    `# ${p.name || "诺姆"} × ${p.partnerName || "你"} · 未来伴侣记忆卡册`,
+    `# ${p.name || "小汐"} × ${p.partnerName || "你"} · 未来伴侣记忆卡册`,
     "",
     `> 导出时间：${pack?.exportedAt || new Date().toISOString()}  |  格式：\`${pack?.schema || MEMORY_CARD_SCHEMA}\``,
     `> 记忆卡：${pack?.cards?.length || 0} 张  |  长期事实：${pack?.activeFacts?.length || 0} 条`,
     "",
     "## 一、伴侣底稿",
-    `- **名字**：${p.name || "诺姆"}`,
+    `- **名字**：${p.name || "小汐"}`,
     `- **称呼**：${p.partnerName || "你"}`,
     `- **角色**：${p.role || "-"}`,
     `- **语感风格**：${p.voiceStyle || "-"}`,

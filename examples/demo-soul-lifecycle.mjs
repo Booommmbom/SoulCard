@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Nuomu Soul — 1-Second Zero-API-Key Cognitive Lifecycle Demo
+// SoulCard — 1-Second Zero-API-Key Cognitive Lifecycle Demo
 // Showcases all 8 model-agnostic pillars offline with zero external dependencies.
 
 import {
@@ -25,7 +25,7 @@ import {
 
 const now = new Date(2026, 10, 23, 15, 0, 0).getTime();
 
-console.log("=== Nuomu Soul — Model-Agnostic Companion Engine Demo ===\n");
+console.log("=== SoulCard — Model-Agnostic Companion Engine Demo ===\n");
 
 // 1. L1 Episode Bundler
 const morning = new Date(2026, 10, 22, 10, 15, 0).getTime();
@@ -121,7 +121,7 @@ const declutter = computePromptDeclutterStats({
 const soul = buildPortableSoulLedger({
   diaryEntries: [sampleDiary],
   milestones: [{ weekKey: "2026-W48", milestone: "慢慢学会卸下逞强和端着的感觉，相处更自在。", createdAt: now }],
-  identityVersion: "nuomu-v1",
+  identityVersion: "soulcard-v1",
   now,
 });
 const restored = mergeSoulLedgerImport({ incoming: soul, currentDiaries: [], currentMilestones: [] });

@@ -1,6 +1,6 @@
 // Ambient Companion Presence & Polite Check-in Engine (Limbic Social Drive Simulation)
 // Pure core module: ZERO fs / sqlite / channel / network imports.
-// Decides when Nuomu should gently check in on desktop with strict anti-intrusion guards.
+// Decides when SoulCard should gently check in on desktop with strict anti-intrusion guards.
 
 import { describePadEmotion } from "./emotion-pad.mjs";
 import { snapshotInnerLife } from "./inner-life.mjs";
@@ -15,7 +15,7 @@ function isInQuietHours(now, quietStartHour = 0.5, quietEndHour = 8.5) {
 }
 
 /**
- * Evaluate whether Nuomu should gently initiate a desktop check-in right now.
+ * Evaluate whether SoulCard should gently initiate a desktop check-in right now.
  * Strictly protects user focus: never interrupts typing, active chats, quiet sleep hours,
  * or double-texts when an earlier message went unanswered.
  */
@@ -58,7 +58,7 @@ export function evaluateAmbientCheckIn({
   const ambAt = Number(lastAmbientAt) || 0;
   const lastAnyChat = Math.max(uAt, aAt);
 
-  // Never intrude if user & Nuomu just chatted recently
+  // Never intrude if user & SoulCard just chatted recently
   if (lastAnyChat > 0 && nowMs - lastAnyChat < minIdleMinutes * 60000) {
     return { shouldCheckIn: false, reason: "recent-chat" };
   }
@@ -68,7 +68,7 @@ export function evaluateAmbientCheckIn({
     return { shouldCheckIn: false, reason: "ambient-cooldown" };
   }
 
-  // Never double-text if Nuomu spoke last and user hasn't replied within 4 hours
+  // Never double-text if SoulCard spoke last and user hasn't replied within 4 hours
   if (aAt > uAt && nowMs - aAt < unansweredBlockHours * 3600000) {
     return { shouldCheckIn: false, reason: "awaiting-reply" };
   }
@@ -94,7 +94,7 @@ export function evaluateAmbientCheckIn({
 }
 
 /**
- * Compose a concise, natural, zero-assistant-speak check-in line grounded in Nuomu's
+ * Compose a concise, natural, zero-assistant-speak check-in line grounded in the companion's
  * current inner-life activity, diary openLoops, and PAD emotion state.
  */
 export function composeAmbientCheckInMessage({

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Step 2 Runtime Orchestrator: Weekly Developmental Growth Reflection + Stale Habit Retirement.
-// Uses pure core packages/nuomu-core/growth-evolution.mjs; never touches data/memory.db.
+// Uses pure core packages/soulcard-core/growth-evolution.mjs; never touches data/memory.db.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -18,11 +18,11 @@ import {
 import { callUnifiedLlm, loadDotEnv, resolveLlmConfig } from "./llm-client.mjs";
 
 loadDotEnv();
-const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
-const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
+const DEFAULT_DATA_DIR = resolve(process.env.SOULCARD_DATA_DIR || join(process.cwd(), "data"));
+const DEFAULT_GATEWAY_URL = process.env.SOULCARD_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
-const DEFAULT_MODEL = process.env.NUOMU_WEEKLY_MODEL || "gemini-4-hydrogen";
-const DEFAULT_EFFORT = process.env.NUOMU_WEEKLY_EFFORT || "low";
+const DEFAULT_MODEL = process.env.SOULCARD_WEEKLY_MODEL || "gemini-4-hydrogen";
+const DEFAULT_EFFORT = process.env.SOULCARD_WEEKLY_EFFORT || "low";
 
 const MODEL_CNY_PER_MILLION = {
   "gemini-4-hydrogen": { input: 10.8, output: 54 },
@@ -98,7 +98,7 @@ async function callWeeklyLlm(messages, {
       maxTokens,
       jsonMode: true,
       timeoutMs,
-      extraHeaders: { "x-nuomu-caller": "weekly-growth" },
+      extraHeaders: { "x-soulcard-caller": "weekly-growth" },
       fetchFn,
     });
     if (unified.ok && unified.content) {
@@ -118,7 +118,7 @@ async function callWeeklyLlm(messages, {
     try {
       const res = await fetchFn(gatewayUrl, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-nuomu-caller": "weekly-growth" },
+        headers: { "content-type": "application/json", "x-soulcard-caller": "weekly-growth" },
         body: JSON.stringify({
           model: gatewayModel,
           reasoning_effort: effort,
@@ -136,7 +136,7 @@ async function callWeeklyLlm(messages, {
         if (content) {
           return {
             ok: true,
-            provider: "nuomu-vertex-gateway",
+            provider: "soulcard-gemini-gateway",
             model: data?.model || gatewayModel,
             effort,
             content,
@@ -183,7 +183,7 @@ async function callWeeklyLlm(messages, {
 }
 
 export async function runWeeklyGrowthReflection(options = {}) {
-  const dataDir = String(options.dataDir || process.env.NUOMU_DATA_DIR || DEFAULT_DATA_DIR);
+  const dataDir = String(options.dataDir || process.env.SOULCARD_DATA_DIR || DEFAULT_DATA_DIR);
   const now = Number(options.now || Date.now());
   const weekKey = String(options.weekKey || computeIsoWeekKey(now));
   const minDiaries = Math.max(1, Number(options.minDiaries ?? 1));

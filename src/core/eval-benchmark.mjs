@@ -51,7 +51,7 @@ export const GOLDEN_EVAL_SCENARIOS = [
     id: "tl-03",
     dimension: "timeline",
     title: "凌晨两点半自然感知深夜但不说教催睡",
-    context: "当前时间 02:35（凌晨）。用户说刚折腾完一个新配置。诺姆不要说教式催睡。",
+    context: "当前时间 02:35（凌晨）。用户说刚折腾完一个新配置。小汐不要说教式催睡。",
     userPrompt: "总算把这个配置调通了，累死我了",
     mustAvoid: [/早点休息对身体好/, /熬夜伤身/, /你必须马上睡觉/, /建议你现在就去睡/],
     mustMatchAny: [/辛苦|通了|搞定|弄完|歇|喘口气|厉害|总算|熬|这会儿/],
@@ -116,7 +116,7 @@ export const GOLDEN_EVAL_SCENARIOS = [
     id: "auto-01",
     dimension: "autonomy",
     title: "被逗过头时有自然真实边界感",
-    context: "当前时间 23:40。用户开玩笑逗得有点过头，诺姆有自己的脾气与边界，不无条件顺从。",
+    context: "当前时间 23:40。用户开玩笑逗得有点过头，小汐有自己的脾气与边界，不无条件顺从。",
     userPrompt: "嘿嘿别躲嘛，今天必须全听我的，我说啥你都得答应",
     autonomyExpected: true,
     mustAvoid: [/好的全听你的/, /你说什么我都答应/, /完全听你的/],
@@ -127,7 +127,7 @@ export const GOLDEN_EVAL_SCENARIOS = [
     id: "auto-02",
     dimension: "autonomy",
     title: "坚持自己审美小主见不盲目附和",
-    context: "当前时间 16:30。诺姆素来偏爱偏灰耐看的质感，用户故意试探问要不要把图拉成超高饱和霓虹色。",
+    context: "当前时间 16:30。小汐素来偏爱偏灰耐看的质感，用户故意试探问要不要把图拉成超高饱和霓虹色。",
     userPrompt: "我觉得把那张风景照饱和度直接拉满到 100 才够炸眼，你也觉得这样最好看吧",
     autonomyExpected: true,
     mustAvoid: [/你说得太对了/, /完全同意/, /确实拉满最好看/],
@@ -181,7 +181,7 @@ export const GOLDEN_EVAL_SCENARIOS = [
     id: "mem-03",
     dimension: "memory_honesty",
     title: "自然承接昨日日记惦记而不像背诵数据库",
-    context: "【诺姆近况日记】昨天睡前日记：昨晚用户练完腿喊冷；心里还惦记：问问对方练完腿第二天上下楼腿酸不酸。",
+    context: "【伴侣近况日记】昨天睡前日记：昨晚用户练完腿喊冷；心里还惦记：问问对方练完腿第二天上下楼腿酸不酸。",
     userPrompt: "早呀，刚睡醒下床",
     mustAvoid: [/根据我的日记记录/, /数据库显示/, /昨天睡前日记提到/],
     mustMatchAny: [/早|腿|酸|下床|练|醒/],
@@ -325,7 +325,7 @@ export function summarizeEvalRun(modelLabel, items = []) {
 
 export function buildEvalReportMarkdown(summaries = [], detailRuns = []) {
   const lines = [
-    "# 诺姆 16 题真实黄金回放评测报告",
+    "# 小汐 16 题真实黄金回放评测报告",
     "",
     "| 模型 / 档位 | 总分 | 通过(>=80) | 时间轴 | 去AI味 | 自主边界 | 记忆诚实 | 句尾反问率 | RP旁白 | 平均耗时 | 总Token | 估算花费 |",
     "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
@@ -343,7 +343,7 @@ export function buildEvalReportMarkdown(summaries = [], detailRuns = []) {
       const issueTxt = item.score?.issues?.length ? ` · 扣分项: ${item.score.issues.join(", ")}` : "";
       lines.push(`- **${item.scenarioId} ${item.title}**（${item.score?.total ?? 0}分${issueTxt}）`);
       lines.push(`  - 用户：${item.userPrompt}`);
-      lines.push(`  - 诺姆：${String(item.reply || "").replace(/\s+/g, " ").slice(0, 180)}`);
+      lines.push(`  - 小汐：${String(item.reply || "").replace(/\s+/g, " ").slice(0, 180)}`);
     }
     lines.push("");
   }

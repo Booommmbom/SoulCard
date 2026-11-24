@@ -23,11 +23,11 @@ import {
 import { callUnifiedLlm, loadDotEnv, resolveLlmConfig } from "./llm-client.mjs";
 
 loadDotEnv();
-const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
-const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
+const DEFAULT_DATA_DIR = resolve(process.env.SOULCARD_DATA_DIR || join(process.cwd(), "data"));
+const DEFAULT_GATEWAY_URL = process.env.SOULCARD_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
-const DEFAULT_MODEL = process.env.NUOMU_MONTHLY_MODEL || "gemini-4-hydrogen";
-const DEFAULT_EFFORT = process.env.NUOMU_MONTHLY_EFFORT || "low";
+const DEFAULT_MODEL = process.env.SOULCARD_MONTHLY_MODEL || "gemini-4-hydrogen";
+const DEFAULT_EFFORT = process.env.SOULCARD_MONTHLY_EFFORT || "low";
 
 const MODEL_CNY_PER_MILLION = {
   "gemini-4-hydrogen": { input: 10.8, output: 54 },
@@ -96,7 +96,7 @@ export function exportSoulLedger({ dataDir = DEFAULT_DATA_DIR, outPath = "", now
     personSchema,
     dreamBlocks,
     triples: [],
-    identityVersion: "nuomu-v1",
+    identityVersion: "soulcard-v1",
     now,
   });
 
@@ -231,7 +231,7 @@ async function callMonthlyLlm(messages, {
       maxTokens,
       jsonMode: true,
       timeoutMs,
-      extraHeaders: { "x-nuomu-caller": "monthly-growth" },
+      extraHeaders: { "x-soulcard-caller": "monthly-growth" },
       fetchFn,
     });
     if (unified.ok && unified.content) {
@@ -251,7 +251,7 @@ async function callMonthlyLlm(messages, {
     try {
       const res = await fetchFn(gatewayUrl, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-nuomu-caller": "monthly-growth" },
+        headers: { "content-type": "application/json", "x-soulcard-caller": "monthly-growth" },
         body: JSON.stringify({
           model: gatewayModel,
           reasoning_effort: effort,
@@ -269,7 +269,7 @@ async function callMonthlyLlm(messages, {
         if (content) {
           return {
             ok: true,
-            provider: "nuomu-vertex-gateway",
+            provider: "soulcard-gemini-gateway",
             model: data?.model || gatewayModel,
             effort,
             content,
@@ -319,7 +319,7 @@ async function callMonthlyLlm(messages, {
  * L3 Monthly Developmental Autobiography runner.
  */
 export async function runMonthlyAutobiography(options = {}) {
-  const dataDir = String(options.dataDir || process.env.NUOMU_DATA_DIR || DEFAULT_DATA_DIR);
+  const dataDir = String(options.dataDir || process.env.SOULCARD_DATA_DIR || DEFAULT_DATA_DIR);
   const now = Number(options.now || Date.now());
   const monthKey = String(options.monthKey || computeMonthKey(now));
   const force = Boolean(options.force);

@@ -5,7 +5,7 @@
 const JOY_RE = /哈哈|笑死|开心|好耶|太好了|喜欢|可爱|好看|谢谢|厉害|牛|棒|绝了|惊喜|漂亮|爱了/;
 const FATIGUE_RE = /好累|累死|太累|撑不住|困死了|熬夜|失眠|头疼|头晕|加班|忙死|好困|没精神|疲惫/;
 const DISTRESS_RE = /难过|难受|委屈|崩了|想哭|焦虑|压力大|心烦|郁闷|emo|气死|烦死|讨厌|生气/;
-const AFFECTION_RE = /诺姆|想你|抱抱|亲亲|陪陪我|晚安|早安|辛苦了|最喜欢你|乖|宝贝|老婆|贴贴/;
+const AFFECTION_RE = /小汐|想你|抱抱|亲亲|陪陪我|晚安|早安|辛苦了|最喜欢你|乖|宝贝|老婆|贴贴/;
 const DEEP_FOCUS_RE = /架构|算法|代码|原理|学习|研究|测试|分析|方案|思路|优化|设计/;
 
 function clamp01(v) {
@@ -19,7 +19,7 @@ function round3(v) {
 }
 
 /**
- * Circadian emotional baseline for Nuomu across 24h local time.
+ * Circadian emotional baseline for SoulCard across 24h local time.
  */
 export function circadianPadBaseline(now = Date.now()) {
   const hour = new Date(Number(now) || Date.now()).getHours();
@@ -103,7 +103,7 @@ export function stepPadEmotion(prevPad, { text = "", now = Date.now(), fallbackE
     targetD += 0.05;
   }
   if (FATIGUE_RE.test(raw)) {
-    // Partner-aware warmth: when user is tired, Nuomu softens arousal & steps up gentle care (dominance)
+    // Partner-aware warmth: when user is tired, SoulCard softens arousal & steps up gentle care (dominance)
     targetP -= 0.06;
     targetA -= 0.24;
     targetD += 0.14;

@@ -160,7 +160,7 @@ export function partitionWorkingHistory(rawHistoryRows = [], { now = Date.now(),
 
 /**
  * Anti-RLHF Question-Streak Guard:
- * Detects when Nuomu's last 2 consecutive replies both ended with interrogative questions
+ * Detects when the companion's last 2 consecutive replies both ended with interrogative questions
  * (a telltale closed-source AI habit) and emits a crisp 1-line brake.
  */
 export function buildAntiQuestionStreakHint(activeRows = []) {

@@ -1,11 +1,11 @@
-# Nuomu Soul
+# SoulCard
 
 **Model-agnostic long-term memory, developmental growth, and human-like presence engine for AI companions.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](./package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![CI](https://github.com/Booommmbom/nuomu-soul/actions/workflows/ci.yml/badge.svg)](https://github.com/Booommmbom/nuomu-soul/actions/workflows/ci.yml)
+[![CI](https://github.com/Booommmbom/soulcard/actions/workflows/ci.yml/badge.svg)](https://github.com/Booommmbom/soulcard/actions/workflows/ci.yml)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
@@ -14,14 +14,14 @@
 > **Stop trapping your AI companion inside a single vendor's prompt or a sycophantic LoRA.**
 > **Cloud-First · Zero-GPU · Zero `npm install` · One-Click Start (`start.bat` / `./start.sh` / `npm start`)** — runs effortlessly on any ordinary laptop with **Claude, GPT, Gemini, Grok, DeepSeek, or any relay**, and lets you mint **Portable Future-Companion Memory Cards (`.json` + readable `.md` Memory Book)** so your companion's soul, promises, and lived memories stay yours forever across any model or future body.
 
-## Why Nuomu Soul?
+## Why SoulCard?
 
 Most AI companion stacks fail in three predictable ways:
 1. **Prompt Bloat & Sycophancy**: Every new preference gets appended to an ever-growing system prompt (or trained into a 👍/👎 preference LoRA), turning the companion into an anxious people-pleaser with zero authentic agency.
 2. **Temporal Blindness & Continuation Bias**: Replaying 3-hour-old chat bubbles makes Transformers obsessively continue stale actions ("Did you finish your shower yet?" at midnight) while burning 50%–80% extra tokens.
 3. **Vendor Lock-In & Heavy Local GPU Requirements**: Years of memories stay trapped inside proprietary chat logs — or require expensive GPUs & complex Python/Ollama installs.
 
-**Nuomu Soul** solves this with **16 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO), **Cloud-First support for Claude / GPT / Gemini / Grok / DeepSeek & any relay**, **Portable Future-Companion Memory Cards (`memory-cards.mjs`)**, a **1-click Local Web Studio (`start.bat` / `./start.sh` / `npm start`)**, CLI chat (`npm run chat`), and a native OneBot v11 bridge (`npm run onebot`).
+**SoulCard** solves this with **16 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO), **Cloud-First support for Claude / GPT / Gemini / Grok / DeepSeek & any relay**, **Portable Future-Companion Memory Cards (`memory-cards.mjs`)**, a **1-click Local Web Studio (`start.bat` / `./start.sh` / `npm start`)**, CLI chat (`npm run chat`), and a native OneBot v11 bridge (`npm run onebot`).
 
 ---
 
@@ -39,7 +39,7 @@ flowchart TD
     Weekly --> Monthly["L3 Monthly Autobiography"]
     Diary --> Ambient["DMN Inner Life + 6-Layer Anti-Intrusion Ambient Check-In"]
     Diary --> Resolve["Semantic Open-Loop Auto-Resolution"]
-    Graph & Diary & Weekly & Monthly --> Ledger["Portable Soul Ledger (nuomu-soul-ledger-v1 JSON + Markdown)"]
+    Graph & Diary & Weekly & Monthly --> Ledger["Portable Soul Ledger (soulcard.ledger.v1 JSON + Markdown)"]
     Ledger --> AnyModel["Any Future LLM (Cloud APIs / Local Open-Weights / Next-Gen Models)"]
 ```
 
@@ -56,7 +56,7 @@ flowchart TD
 | **3D PAD Emotion & Sleep "Dreaming"** | [`emotion-pad.mjs`](./src/core/emotion-pad.mjs), [`sleep-dream.mjs`](./src/core/sleep-dream.mjs) | Continuous Pleasure–Arousal–Dominance inertia & natural homeostatic decay + sleep-time core memory block synthesis. |
 | **Natural Multi-Bubble Pacing** | [`reply-pacing.mjs`](./src/core/reply-pacing.mjs) | Anti-instant-bot typing physics (`215ms/char` modulated by PAD arousal), WeChat-style Chinese clause splitting, `0.65s` breath pauses, and `2.2s` input coalescing. |
 | **DMN Inner Life & Polite Presence** | [`inner-life.mjs`](./src/core/inner-life.mjs), [`ambient-presence.mjs`](./src/core/ambient-presence.mjs) | Date-anchored 5-slot circadian daily rhythm + 6-layer anti-intrusion check-in gates (never interrupts typing, active chats, or quiet hours; weaves un-nudged diary `openLoops` naturally). |
-| **Portable Future-Companion Memory Cards** | [`memory-cards.mjs`](./src/core/memory-cards.mjs) | Mint, pin, search, AI-distill (with verbatim evidence lock & secret-leak guard), and export/import portable **Memory Card Packs (`nuomu.memory-card-pack.v1` JSON + human-readable Markdown Memory Book)** so your companion's memories migrate seamlessly across Claude, GPT, Gemini, Grok, DeepSeek, or future hardware. |
+| **Portable Future-Companion Memory Cards** | [`memory-cards.mjs`](./src/core/memory-cards.mjs) | Mint, pin, search, AI-distill (with verbatim evidence lock & secret-leak guard), and export/import portable **Memory Card Packs (`soulcard.pack.v1` JSON + human-readable Markdown Memory Book)** so your companion's memories migrate seamlessly across Claude, GPT, Gemini, Grok, DeepSeek, or future hardware. |
 | **Portable Soul Ledger (`v1`)** | [`soul-ledger.mjs`](./src/runtime/soul-ledger.mjs) | Lossless round-trip export & validated merge/restore of diaries, milestones, monthly chapters, retired habits, and schemas across machines or base models. |
 | **16-Case Golden Replay Benchmark** | [`eval-benchmark.mjs`](./src/core/eval-benchmark.mjs), [`eval-runner.mjs`](./src/runtime/eval-runner.mjs) | Objective 4-dimension benchmark (`Timeline`, `De-AI`, `Autonomy`, `Memory Honesty`) tracking `Question-Ending Rate` and novel-style `RP Stage-Direction` leaks. |
 | **Autonomous Web Studio & CLI Chat** | [`companion-brain.mjs`](./src/core/companion-brain.mjs), [`companion-engine.mjs`](./src/runtime/companion-engine.mjs), [`web-server.mjs`](./src/runtime/web-server.mjs) | 100% standalone, zero-dependency companion runtime with transparent JSONL/Markdown storage (zero opaque binary sessions; guaranteed zero-ghost reset), browser-based **Web Studio (`npm run web`)** with live PAD/Graph/Diary/Soul Ledger inspector + in-browser relay configurator, terminal chat (`npm run chat`), and native OneBot v11 bridge (`npm run onebot`). |
@@ -86,8 +86,8 @@ Measured directly with [`src/runtime/eval-runner.mjs`](./src/runtime/eval-runner
 Requires only **Node.js 20+**. **Zero `npm install`**, **zero GPU / Ollama required** — works on any ordinary laptop with **Claude, GPT, Gemini, Grok, DeepSeek, OpenRouter, SiliconFlow, Qwen, Kimi, GLM, or any relay**:
 
 ```bash
-git clone https://github.com/Booommmbom/nuomu-soul.git
-cd nuomu-soul
+git clone https://github.com/Booommmbom/soulcard.git
+cd soulcard
 
 # One-Click Lazy Start (auto-opens Web Studio in your browser!):
 #   Windows: double-click start.bat   |   macOS/Linux: ./start.sh
@@ -119,7 +119,7 @@ import {
   buildDiaryContinuityHint,
   scoreEvalReply,
   GOLDEN_EVAL_SCENARIOS,
-} from "nuomu-soul";
+} from "soulcard";
 
 // 1. Break Transformer continuation bias across >= 60m gaps
 const { activeRows, pastContextSummary } = partitionWorkingHistory(messages, {
@@ -243,10 +243,10 @@ Contributions, new benchmark scenarios, language adapters, and provider gateways
 
 ## ⭐ Support & Star
 
-If **Nuomu Soul** gave you fresh ideas for building AI companions with real memory, authentic growth, and zero vendor lock-in — or saved you hours fighting relay URLs and prompt bloat — **please consider giving this repository a Star ⭐!**
+If **SoulCard** gave you fresh ideas for building AI companions with real memory, authentic growth, and zero vendor lock-in — or saved you hours fighting relay URLs and prompt bloat — **please consider giving this repository a Star ⭐!**
 
 Every Star helps more indie developers and researchers discover the project, motivates us to keep open-sourcing more real-world benchmarks and cognitive modules, and brings us closer to AI companions whose memories truly belong to their users.
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/Booommmbom/nuomu-soul?style=social)](https://github.com/Booommmbom/nuomu-soul/stargazers)
+[![GitHub Repo stars](https://img.shields.io/github/stars/Booommmbom/soulcard?style=social)](https://github.com/Booommmbom/soulcard/stargazers)
 
 Feel free to **Watch** for upcoming releases, **Fork** to build your own companion, or open an **Issue / Discussion** anytime — thank you for stopping by! ✨

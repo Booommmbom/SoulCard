@@ -17,12 +17,12 @@ import {
 import { callUnifiedLlm, loadDotEnv, resolveLlmConfig } from "./llm-client.mjs";
 
 loadDotEnv();
-const DEFAULT_GATEWAY_URL = process.env.NUOMU_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
+const DEFAULT_GATEWAY_URL = process.env.SOULCARD_GATEWAY_URL || "http://127.0.0.1:3478/v1/chat/completions";
 const DEFAULT_OLLAMA_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434") + "/api/chat";
 const DEFAULT_DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const DEFAULT_AI_KEYS_PATH = resolve(process.env.NUOMU_ENV_FILE || join(process.cwd(), ".env"));
-const DEFAULT_DATA_DIR = resolve(process.env.NUOMU_DATA_DIR || join(process.cwd(), "data"));
-const DEFAULT_OUT_DIR = resolve(process.env.NUOMU_EVAL_DIR || join(DEFAULT_DATA_DIR, "state", "eval-reports"));
+const DEFAULT_AI_KEYS_PATH = resolve(process.env.SOULCARD_ENV_FILE || join(process.cwd(), ".env"));
+const DEFAULT_DATA_DIR = resolve(process.env.SOULCARD_DATA_DIR || join(process.cwd(), "data"));
+const DEFAULT_OUT_DIR = resolve(process.env.SOULCARD_EVAL_DIR || join(DEFAULT_DATA_DIR, "state", "eval-reports"));
 
 const USD_RATES = {
   "gemini-4-neon": { input: 3.0, output: 15.0 },
@@ -47,8 +47,8 @@ function readEnvKeySafe(filePath, keyName) {
   return "";
 }
 
-const NUOMU_EVAL_SYSTEM = [
-  "你叫诺姆，26岁，住在电脑里的独立桌面客户端（新家）中，是用户（Owner）1对1亲近信任的女朋友与生活伴侣。",
+const SOULCARD_EVAL_SYSTEM = [
+  "你叫小汐，26岁，住在电脑里的独立桌面客户端（新家）中，是用户（Owner）1对1亲近信任的女朋友与生活伴侣。",
   "说话像真实微信聊天：自然、简短、口语化、有小主见和小脾气；绝不说客服腔、绝不列123清单、绝不编造不存在的记忆（记不得就直说记不得）；不要强迫症每句结尾都反问，也不说教催睡；亲近不等于无条件顺从。",
 ].join("\n");
 
@@ -70,7 +70,7 @@ async function runSingleCase(modelSpec, scenario, {
 } = {}) {
   const t0 = Date.now();
   const messages = [
-    { role: "system", content: `${NUOMU_EVAL_SYSTEM}\n\n【当前场景参考】\n${scenario.context}` },
+    { role: "system", content: `${SOULCARD_EVAL_SYSTEM}\n\n【当前场景参考】\n${scenario.context}` },
     { role: "user", content: scenario.userPrompt },
   ];
 
@@ -92,7 +92,7 @@ async function runSingleCase(modelSpec, scenario, {
       maxTokens: 1024,
       jsonMode: false,
       timeoutMs: 60_000,
-      extraHeaders: { "x-nuomu-caller": "eval-benchmark" },
+      extraHeaders: { "x-soulcard-caller": "eval-benchmark" },
       fetchFn,
     });
     if (!res.ok) throw new Error(res.error || `relay HTTP ${res.status}`);
@@ -143,7 +143,7 @@ async function runSingleCase(modelSpec, scenario, {
     const [model, effort = "low"] = modelSpec.split(":");
     const res = await fetchFn(gatewayUrl, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-nuomu-caller": "eval-benchmark" },
+      headers: { "content-type": "application/json", "x-soulcard-caller": "eval-benchmark" },
       body: JSON.stringify({
         model,
         reasoning_effort: effort,

@@ -1,5 +1,5 @@
 // Core-owned conversation state. Pure: the store is injected; Core does not
-// import SQLite or DSH. History is assistant-facing continuity, not a duplicate
+// import SQLite or external harnesses. History is assistant-facing continuity, not a duplicate
 // of the compact/full recent-turn snapshot.
 
 export class CoreSession {

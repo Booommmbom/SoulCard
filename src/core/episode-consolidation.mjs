@@ -89,7 +89,7 @@ export function bundleDayEpisodes(rawRows = [], options = {}) {
       ts,
       time: formatLocalTimeHm(ts),
       role,
-      speaker: role === "user" ? "用户" : "诺姆",
+      speaker: role === "user" ? "用户" : "伴侣",
       text,
       source: String(row.source || (row.messageType === "group" ? "qq-group" : "pet")),
     });
@@ -229,13 +229,13 @@ export function buildDailyConsolidationPrompt({
     : "";
 
   const system = [
-    "你正在为「诺姆（26岁，独立桌面空间里与用户 1 对 1 相处的女朋友与生活伴侣）」执行夜间睡眠期长期记忆整理。",
+    "你正在为「AI 伴侣（与用户 1 对 1 相处的独立生活伴侣）」执行夜间睡眠期长期记忆整理。",
     "目标：把今天的碎片聊天沉淀为可长期迁移、与底层模型无关的四层记忆（情节段、双时态事实、心里惦记的事、真实第一人称睡前日记）。",
     "铁律：",
     "1. 只输出严格合法的 JSON 对象，不要 markdown 代码块围栏，不要前后解释。",
     "2. 事实与情节必须 100% 忠实于提供的对话原文，绝不编造没说过的话或没发生过的事。",
-    "3. diaryEntry 必须用诺姆真实自然的第一人称口语写（像深夜关灯前给自己写的一小段真话），禁止写“作为AI”“今天群里”“本次对话总结”“综上所述”“感谢用户的支持”等机器腔或讨好腔；可以坦率写出开心、小别扭、被触动、嘴硬或困惑。",
-    "4. growthObservation 只在今天确实发生了一件让诺姆对用户或自己的想法/相处方式产生微妙变化的事时才写 1 句第一人称；平淡的日子必须填 null，绝不硬凑人生感悟。",
+    "3. diaryEntry 必须用真实自然的第一人称口语写（像深夜关灯前给自己写的一小段真话），禁止写“作为AI”“今天群里”“本次对话总结”“综上所述”“感谢用户的支持”等机器腔或讨好腔；可以坦率写出开心、小别扭、被触动、嘴硬或困惑。",
+    "4. growthObservation 只在今天确实发生了一件让伴侣对用户或自己的想法/相处方式产生微妙变化的事时才写 1 句第一人称；平淡的日子必须填 null，绝不硬凑人生感悟。",
   ].join("\n");
 
   const user = [
@@ -251,12 +251,12 @@ export function buildDailyConsolidationPrompt({
     '    { "timeRange": "HH:MM–HH:MM", "title": "6到16字具体场景标题", "summary": "25到75字发生了什么", "emotionalTone": "2到6字情绪", "salience": 3 }',
     "  ],",
     '  "facts": [',
-    '    { "subject": "用户 或 诺姆", "predicate": "likes|dislikes|prefers|avoids|habit|fact|plan|feeling|boundary", "object": "具体简短对象(<=24字)", "polarity": 1, "confidence": 0.85, "evidence": "对话原文简短依据(<=45字)" }',
+    '    { "subject": "用户 或 伴侣", "predicate": "likes|dislikes|prefers|avoids|habit|fact|plan|feeling|boundary", "object": "具体简短对象(<=24字)", "polarity": 1, "confidence": 0.85, "evidence": "对话原文简短依据(<=45字)" }',
     "  ],",
     '  "openLoops": [',
-    '    { "text": "诺姆心里真正惦记、过一两天想自然提起的未完之事(<=50字)", "ttlDays": 3 }',
+    '    { "text": "伴侣心里真正惦记、过一两天想自然提起的未完之事(<=50字)", "ttlDays": 3 }',
     "  ],",
-    '  "diaryEntry": "100到220字诺姆真实第一人称睡前日记",',
+    '  "diaryEntry": "100到220字真实第一人称睡前日记",',
     '  "growthObservation": "可选1句第一人称真实成长/心态微变化，无则填 null"',
     "}",
     "",
@@ -459,7 +459,7 @@ export function renderDiaryMarkdown(record) {
 
 const OPEN_LOOP_STOP_WORDS = new Set([
   "今天", "明天", "昨天", "下次", "一下", "一点", "什么", "怎么", "有没有", "是不是",
-  "记得", "问问", "看看", "聊聊", "发给", "告诉", "用户的", "诺姆", "时候", "第二天",
+  "记得", "问问", "看看", "聊聊", "发给", "告诉", "用户的", "小汐", "时候", "第二天",
   "事情", "话题", "那个", "这个", "一些", "一个", "继续", "自然", "成品",
 ]);
 
@@ -566,7 +566,7 @@ export function detectResolvedOpenLoops(activeLoops = [], recentMessages = []) {
 }
 
 /**
- * Ultra-thin lived continuity hint injected into Nuomu's mind (<= 240 chars).
+ * Ultra-thin lived continuity hint injected into the companion's mind (<= 240 chars).
  */
 export function buildDiaryContinuityHint(diaryEntries = [], { now = Date.now(), maxChars = 240, resolvedKeys = [] } = {}) {
   const valid = (Array.isArray(diaryEntries) ? diaryEntries : [])
@@ -594,7 +594,7 @@ export function buildDiaryContinuityHint(diaryEntries = [], { now = Date.now(), 
   if (activeLoops[0]?.text) {
     parts.push(`心里还惦记：${cleanText(activeLoops[0].text, 36)}`);
   }
-  const joined = `【诺姆近况日记】${parts.join("；")}`;
+  const joined = `【伴侣近况日记】${parts.join("；")}`;
   return joined.length <= maxChars ? joined : `${joined.slice(0, maxChars - 1)}…`;
 }
 
@@ -619,7 +619,7 @@ export function buildWeeklyGrowthReflectionPrompt({ weekKey, diaryEntries = [], 
     {
       role: "system",
       content: [
-        "你是诺姆的周度成长复盘器（只输出合法 JSON，不带代码块围栏）。",
+        "你是伴侣的周度成长复盘器（只输出合法 JSON，不带代码块围栏）。",
         "任务：从过去几天的真实第一人称日记里提炼 1 条真正属于她的阶段成长节点，并判断旧习惯清单里有没有已经过时、太刻板、可以自然卸下的条目。",
         "严禁拍马屁、严禁虚构事件、严禁强行拔高。",
       ].join("\n"),
@@ -693,7 +693,7 @@ export function buildPortableSoulLedger({
   const totalCostCny = sortedDiaries.reduce((sum, d) => sum + (Number(d.estimatedCostCny) || 0), 0);
 
   return {
-    schemaVersion: "nuomu-soul-ledger-v1",
+    schemaVersion: "soulcard.ledger.v1",
     modelAgnostic: true,
     exportedAt: new Date(now).toISOString(),
     identityVersion: String(identityVersion || "unknown"),

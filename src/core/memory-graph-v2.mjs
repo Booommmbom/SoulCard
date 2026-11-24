@@ -14,17 +14,17 @@ import {
 const VISUAL_SOURCE_RE = /(视觉记忆|看图|这张图|画面里|图片里|\bvisual\b)/i;
 const PROMISE_SOURCE_RE = /(约定|承诺|说好|答应|下次一定|回头一起|\bpromise\b)/i;
 const WORKSPACE_SOURCE_RE = /(新家置顶手账|手账卡|workspace_note)/i;
-const SELF_INFERRED_TAG_RE = /(nuomu_auto|auto_qwen|self_inferred|auto_promote)/i;
+const SELF_INFERRED_TAG_RE = /(soulcard_auto|auto_qwen|self_inferred|auto_promote)/i;
 
 const NEGATIVE_PREF_RE = /(?:不是很喜欢|不太喜欢|不怎么喜欢|不喜欢|不爱|讨厌|最烦|不想聊|没兴趣|不感兴趣|不再喜欢|戒了|不喝|不吃)([^，。！？,.!?；;\n]{1,18})/g;
 const POSITIVE_PREF_RE = /(?:很喜欢|最喜欢|超喜欢|挺喜欢|喜欢|爱玩|爱拍|爱吃|爱喝|热衷于|平时(?:喜欢|爱)?)([^，。！？,.!?；;\n]{1,18})/g;
-const DOING_PROJECT_RE = /(?:正在做|在做|在给诺姆做|准备做|在写|在搭|打算做)([^，。！？,.!?；;\n]{2,22})/g;
+const DOING_PROJECT_RE = /(?:正在做|在做|在给小汐做|准备做|在写|在搭|打算做)([^，。！？,.!?；;\n]{2,22})/g;
 const HABIT_ACTIVITY_RE = /(?:去健身|健身|爬山|爬了山|练肩|练背|跑步|散步|修图|打游戏|打打游戏|拍照|拍拍照)/g;
 const INTERACTION_RULE_RE = /(不用老是|别老是|不要总是|别催|不要催|别问我下一句|不想听.*说教|别端着|自然相处|活人感|敷衍)/;
 
 const GENERIC_OBJECTS = new Set([
   "这个", "那个", "什么", "这些", "那些", "这样", "那样", "一点", "一下", "东西", "事情",
-  "自己", "我们", "你们", "他们", "诺姆", "对方", "别人", "地方", "感觉", "时候",
+  "自己", "我们", "你们", "他们", "小汐", "对方", "别人", "地方", "感觉", "时候",
   "这种质感", "那种质感", "这种感觉", "那种感觉", "这种", "那种", "质感",
   "话", "句", "事", "人", "图", "它", "他", "她", "我", "你",
 ]);
@@ -60,7 +60,7 @@ export function classifyMemorySource(row = {}) {
     return { sourceType: "promise", sourceLabel: "我们的约定", trustWeight: 1.0 };
   }
   if (explicit === "self_inferred" || (SELF_INFERRED_TAG_RE.test(tags) && !String(row.evidence ?? "").trim())) {
-    return { sourceType: "self_inferred", sourceLabel: "诺姆记下的印象", trustWeight: 0.78 };
+    return { sourceType: "self_inferred", sourceLabel: "小汐记下的印象", trustWeight: 0.78 };
   }
   if (explicit === "user_said") {
     return { sourceType: "user_said", sourceLabel: "用户亲口说过", trustWeight: 1.0 };
@@ -117,7 +117,7 @@ function splitClauseObjects(clause) {
 export function extractRelationTriples(row = {}) {
   const rawText = preferReadableMemoryText(row.text, row.gist);
   const text = String(rawText ?? "")
-    .replace(/^(?:你|用户|owner|user|诺姆|assistant)\s*[:：]\s*/i, "")
+    .replace(/^(?:你|用户|owner|user|小汐|assistant)\s*[:：]\s*/i, "")
     .trim();
   if (text.length < 3) return [];
 
@@ -194,23 +194,23 @@ export function extractRelationTriples(row = {}) {
     }
   }
 
-  // E. Interaction preference / boundary rules for Nuomu
+  // E. Interaction preference / boundary rules for SoulCard
   if (INTERACTION_RULE_RE.test(text)) {
     const compactRule = text.replace(/\s+/g, " ").slice(0, 22);
-    push("诺姆", "相处规则", compactRule, 1, Math.min(0.96, baseConf + 0.05));
+    push("小汐", "相处规则", compactRule, 1, Math.min(0.96, baseConf + 0.05));
   }
 
   // F. Promises / shared commitments
   if (sourceType === "promise" && !/(晚安|明天见)/.test(text)) {
     const compactPromise = text.replace(/\s+/g, " ").slice(0, 22);
-    push("用户和诺姆", "约定", compactPromise, 1, Math.min(0.96, baseConf + 0.05));
+    push("用户和小汐", "约定", compactPromise, 1, Math.min(0.96, baseConf + 0.05));
   }
 
   // G. Visual shared observations
   if (sourceType === "visual_observed") {
     const visualConcepts = extractConceptTokens(positiveText, { stripNegation: true }).slice(0, 3);
     for (const vc of visualConcepts) {
-      push("用户和诺姆", "一起看过", vc, 1, baseConf * 0.95);
+      push("用户和小汐", "一起看过", vc, 1, baseConf * 0.95);
     }
   }
 
@@ -382,7 +382,7 @@ export function runPersonalizedPageRank({
   for (const [node, score] of rank.entries()) {
     if (seedSet.has(node)) continue;
     // Skip hub-only person names unless specifically relevant
-    if (node === "用户" || node === "诺姆" || node === "用户和诺姆") continue;
+    if (node === "用户" || node === "小汐" || node === "用户和小汐") continue;
     if (score < 0.008) continue;
     const orig = bestOrigin.get(node);
     results.push({

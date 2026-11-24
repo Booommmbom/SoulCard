@@ -7,7 +7,7 @@ import { isScheduleLikelyPassed, preferReadableMemoryText } from "./memory-cogni
 import { buildBiTemporalTriples } from "./memory-graph-v2.mjs";
 
 const JARGON_CANDIDATES = [
-  "新家", "手账", "记忆星图", "星图", "全息", "诺姆", "活人感", "视觉记忆", "创意插件", "小用户", "小习惯",
+  "新家", "手账", "记忆星图", "星图", "全息", "小汐", "活人感", "视觉记忆", "创意插件", "小用户", "小习惯",
 ];
 
 function uniqLimit(list, limit = 4) {
@@ -81,7 +81,7 @@ export function runDreamCycle({
     .slice()
     .sort((a, b) => (Number(b.ts ?? 0) - Number(a.ts ?? 0)) || (Number(b.intensity ?? 0) - Number(a.intensity ?? 0)))
     .slice(0, 4)
-    .map((e) => preferReadableMemoryText(e.text, e.gist).replace(/^(?:用户|你|诺姆)[:：]\s*/, "").replace(/[，,、；;]+$/, "").slice(0, 36));
+    .map((e) => preferReadableMemoryText(e.text, e.gist).replace(/^(?:用户|你|小汐)[:：]\s*/, "").replace(/[，,、；;]+$/, "").slice(0, 36));
   const activeThreads = uniqLimit(recentHigh, 3);
 
   // 3. Core Memory Block: shared_vibe (top interaction preferences & habits)
@@ -94,7 +94,7 @@ export function runDreamCycle({
     3
   );
 
-  // 4. Core Memory Block: jargon_glossary (recurring shared terms between Cai & Nuomu)
+  // 4. Core Memory Block: jargon_glossary (recurring shared terms between Cai & SoulCard)
   const corpus = [
     ...activeEvents.map((e) => String(e.text ?? "")),
     ...(Array.isArray(rawRows) ? rawRows.slice(-160).map((r) => String(r?.text ?? "")) : []),

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Complete zero-dependency test suite for Nuomu Soul (Core + Runtime + Gateway).
+// Complete zero-dependency test suite for SoulCard (Core + Runtime + Gateway).
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -156,15 +156,15 @@ await test("5. Gateway multi-model routing, 4-tier/3-tier clamping, AI Studio he
   const cost = computeGatewayCost("gemini-4-hydrogen", { prompt_tokens: 1_000_000, cached_tokens: 0, completion_tokens: 1_000_000 });
   assert.equal(cost.estimatedUsd, 9);
 
-  const auth = createVertexAuthProvider({ env: { NUOMU_VERTEX_ENDPOINT_MODE: "aistudio", GEMINI_API_KEY: "test-placeholder-only" } });
+  const auth = createVertexAuthProvider({ env: { SOULCARD_VERTEX_ENDPOINT_MODE: "aistudio", GEMINI_API_KEY: "test-placeholder-only" } });
   const req = await auth.buildVertexRequest({ model: "gemini-4-hydrogen" });
   assert.equal(req.headers["x-goog-api-key"], "test-placeholder-only");
   assert.equal(req.url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-4-hydrogen:generateContent");
 });
 
 await test("6. End-to-end Daily -> Weekly -> Monthly -> Soul Ledger Round-Trip & 16-Case Eval", async () => {
-  const srcDir = mkdtempSync(join(tmpdir(), "nuomu-oss-src-"));
-  const dstDir = mkdtempSync(join(tmpdir(), "nuomu-oss-dst-"));
+  const srcDir = mkdtempSync(join(tmpdir(), "soulcard-oss-src-"));
+  const dstDir = mkdtempSync(join(tmpdir(), "soulcard-oss-dst-"));
   try {
     mkdirSync(join(srcDir, "state"), { recursive: true });
     const base = new Date(2026, 10, 22, 19, 0, 0).getTime();
@@ -348,10 +348,10 @@ await test("7. Universal Relay & Multi-Protocol Adapter (all URL shapes, key cle
   assert.equal(fallbackRes.content, '{"ok":true}');
 
   // E. Setup wizard `.env` upsert + resolveLlmConfig + custom relay eval run
-  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-setup-"));
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-setup-"));
   try {
     const envPath = join(tmpDir, ".env");
-    writeFileSync(envPath, "# keep comment\nNUOMU_DATA_DIR=./custom-data\n", "utf8");
+    writeFileSync(envPath, "# keep comment\nSOULCARD_DATA_DIR=./custom-data\n", "utf8");
     const setupRes = await applySetupConfig({
       baseUrl: "relay.example.com/v1/",
       apiKey: "Bearer demo-relay-token",
@@ -390,8 +390,8 @@ await test("7. Universal Relay & Multi-Protocol Adapter (all URL shapes, key cle
   }
 });
 
-await test("8. Autonomous Zero-DSH CompanionEngine lifecycle (PAD, Bi-Temporal Graph, RP cleanup, Diary Open-Loop auto-resolve & zero-ghost reset)", async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-engine-"));
+await test("8. Autonomous Standalone CompanionEngine lifecycle (PAD, Bi-Temporal Graph, RP cleanup, Diary Open-Loop auto-resolve & zero-ghost reset)", async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-engine-"));
   try {
     const envPath = join(tmpDir, ".env");
     writeFileSync(envPath, "LLM_BASE_URL=https://relay.example.com/v1\nLLM_API_KEY=demo-engine-key\nLLM_MODEL=deepseek-chat\n", "utf8");
@@ -438,7 +438,7 @@ await test("8. Autonomous Zero-DSH CompanionEngine lifecycle (PAD, Bi-Temporal G
     assert.equal(t3.ok, true);
 
     const snap = engine.getSnapshot(now);
-    assert.equal(snap.zeroDsh, true);
+    assert.equal(snap.standalone, true);
     assert.equal(snap.stats.turnCount, 3);
     assert.ok(snap.stats.activeTripleCount >= 1);
     assert.ok(snap.stats.historicalTripleCount >= 1);
@@ -470,8 +470,8 @@ await test("8. Autonomous Zero-DSH CompanionEngine lifecycle (PAD, Bi-Temporal G
   }
 });
 
-await test("9. Local Web Studio HTTP API & Native Zero-DSH OneBot v11 Bridge end-to-end", async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-web-"));
+await test("9. Local Web Studio HTTP API & Native Standalone OneBot v11 Bridge end-to-end", async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-web-"));
   const sentOneBot = [];
   const mockFetch = async (url, init) => {
     const u = String(url);
@@ -506,7 +506,7 @@ await test("9. Local Web Studio HTTP API & Native Zero-DSH OneBot v11 Bridge end
     const home = await fetch(`http://127.0.0.1:${webPort}/`);
     assert.equal(home.status, 200);
     const html = await home.text();
-    assert.ok(html.includes("Nuomu Soul Studio"));
+    assert.ok(html.includes("SoulCard Studio"));
 
     // Configure relay directly via Web API -> auto-discovers models -> tests & saves `.env`
     const modelsRes = await (await fetch(`http://127.0.0.1:${webPort}/api/config/models`, {
@@ -538,9 +538,9 @@ await test("9. Local Web Studio HTTP API & Native Zero-DSH OneBot v11 Bridge end
     // Export Soul Ledger via Web API
     const expRes = await (await fetch(`http://127.0.0.1:${webPort}/api/soul/export`)).json();
     assert.equal(expRes.ok, true);
-    assert.equal(expRes.payload.schemaVersion, "nuomu-soul-ledger-v1");
+    assert.equal(expRes.payload.schemaVersion, "soulcard.ledger.v1");
 
-    // Native Zero-DSH OneBot Bridge: blocks stranger, accepts owner, delivers reply!
+    // Native Standalone OneBot Bridge: blocks stranger, accepts owner, delivers reply!
     assert.equal(extractOneBotText({ raw_message: "[CQ:face,id=1]你好呀" }), "你好呀");
     const blocked = await (await fetch(`http://127.0.0.1:${obPort}/`, {
       method: "POST",
@@ -565,7 +565,7 @@ await test("9. Local Web Studio HTTP API & Native Zero-DSH OneBot v11 Bridge end
 });
 
 await test("10. Security hardening & concurrency regression (CSRF, DNS-rebinding, CSP/XSS, .env injection, URL schemes, 400/413, OneBot HMAC & chat serialization)", async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-sec-"));
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-sec-"));
   const seenPrompts = [];
   const slowMockFetch = async (_url, init) => {
     await new Promise((r) => setTimeout(r, 20));
@@ -717,13 +717,13 @@ await test("11. Portable Future-Companion Memory Cards, Cloud-First Presets, AI 
   assert.equal(joke.reason, "sarcasm_or_joke");
 
   // 3. Full CompanionEngine + Web Studio HTTP API round-trip
-  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-cards-test-"));
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-cards-test-"));
   let lastSystemPrompt = "";
   const mockFetch = async (_url, opts) => {
     const reqBody = JSON.parse(String(opts?.body || "{}"));
     const sys = reqBody.messages?.find((m) => m.role === "system")?.content || "";
     lastSystemPrompt = sys;
-    const isMint = opts?.headers?.["x-nuomu-caller"] === "memory-card-mint";
+    const isMint = opts?.headers?.["x-soulcard-caller"] === "memory-card-mint";
     const content = isMint
       ? JSON.stringify({
         cards: [

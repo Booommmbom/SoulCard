@@ -1,4 +1,4 @@
-// Nuomu Soul — Unified Public SDK Barrel Export (100% Pure, Zero-Dependency ESM)
+// SoulCard — Unified Public SDK Barrel Export (100% Pure, Zero-Dependency ESM)
 // All exports below perform zero disk, SQLite, or network IO and run identically on Node 20/22+, Deno, Bun, or Browser.
 
 export * from "./core/episode-consolidation.mjs";
