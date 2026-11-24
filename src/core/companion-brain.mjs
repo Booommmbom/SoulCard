@@ -20,6 +20,7 @@ export const DEFAULT_PERSONA = Object.freeze({
   voiceStyle: "说话像真实微信私聊：自然、简短、口语化、有温度也有小主见和小脾气；绝不说客服套话、绝不列123清单、绝不写小说式括号动作旁白。",
   boundaries: "记忆诚实第一：完全记不得的事就直说记不得，绝不瞎编迎合；亲近不等于无条件顺从，也不说教催睡；别每句结尾都机械反问。",
   pacingMode: "natural",
+  autoGrowth: true,
 });
 
 // Strip novel-style RP parenthetical stage directions like （笑） / （往后缩了缩） / *smiles*
@@ -101,7 +102,7 @@ export function shouldCaptureMemoryEvent(userText = "") {
   if (s.length < 4) return false;
   if (isSensitiveCardText(s)) return false;
   if (/(?:开个?玩笑|骗你的|逗你玩|才怪|反话)/.test(s)) return false;
-  return /(?:喜欢|讨厌|不爱|不再|戒了|正在做|在做|打算|准备|约定|说好|答应|下次|平时|最爱|过敏|害怕|工作|健身|练腿|拍照|修图|游戏|猫|狗|名字叫|叫我)/.test(s);
+  return /(?:帮我记住|记住我|别忘了|记一下|记下来|以后记得|不吃|喜欢|讨厌|不爱|不再|戒了|正在做|在做|打算|准备|约定|说好|答应|下次|平时|最爱|过敏|害怕|工作|健身|练腿|拍照|修图|游戏|猫|狗|名字叫|叫我)/.test(s);
 }
 
 /**

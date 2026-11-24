@@ -138,6 +138,9 @@ export function createWebStudioServer({
         const result = await engine.chat(String(body.message ?? body.text ?? ""), {
           pacingMode: String(body.pacingMode || ""),
         });
+        if (result.ok && body.disableAutoGrowth !== true) {
+          engine.maybeScheduleBackgroundGrowth();
+        }
         sendJson(res, result.ok ? 200 : 502, result);
         return;
       }
@@ -216,6 +219,7 @@ export function createWebStudioServer({
         for (const k of ["name", "partnerName", "role", "voiceStyle", "boundaries", "pacingMode"]) {
           if (typeof body[k] === "string" && body[k].trim()) allowed[k] = body[k].trim();
         }
+        if (typeof body.autoGrowth === "boolean") allowed.autoGrowth = body.autoGrowth;
         const saved = engine.savePersona(allowed);
         sendJson(res, 200, { ok: true, persona: saved });
         return;

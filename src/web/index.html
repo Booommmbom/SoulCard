@@ -3,339 +3,481 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SoulCard Studio — Autonomous Companion Engine</title>
+<title>SoulCard Studio — Cloud-First AI Companion</title>
 <style>
   :root {
-    --bg: #0e1116;
-    --panel: #151a22;
-    --card: #1b222d;
-    --border: #2a3342;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --amber: #f59e0b;
-    --amber-soft: rgba(245, 158, 11, 0.14);
+    --bg: #0b0e13;
+    --surface: #121720;
+    --card: #181f2b;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #eef2f6;
+    --muted: #8b95a5;
+    --amber: #f5a623;
+    --amber-soft: rgba(245, 166, 35, 0.14);
     --emerald: #10b981;
     --rose: #fb7185;
     --sky: #38bdf8;
-    --radius: 12px;
+    --radius: 14px;
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.5; }
-  .app { display: grid; grid-template-columns: 1fr 410px; height: 100vh; overflow: hidden; }
-  @media (max-width: 960px) { .app { grid-template-columns: 1fr; grid-template-rows: 1fr 44vh; } }
+  html, body {
+    height: 100%; margin: 0; background: radial-gradient(circle at top, #131926 0%, var(--bg) 55%);
+    color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14.5px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
 
-  /* Left Chat Pane */
-  .chat-pane { display: flex; flex-direction: column; border-right: 1px solid var(--border); min-height: 0; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; background: var(--panel); border-bottom: 1px solid var(--border); }
-  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .avatar { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #fb7185); color: #111; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
-  .brand-title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  /* Main Distraction-Free Chat Shell */
+  .shell { display: flex; flex-direction: column; height: 100vh; max-width: 860px; margin: 0 auto; position: relative; }
+
+  .topbar {
+    height: 60px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border-bottom: 1px solid var(--border); background: rgba(11, 14, 19, 0.72); backdrop-filter: blur(12px); flex-shrink: 0;
+  }
+  .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, #f5a623, #fb7185);
+    color: #111; font-weight: 800; font-size: 16px; display: grid; place-items: center; flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(245, 166, 35, 0.25);
+  }
+  .id-text { min-width: 0; }
+  .id-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--emerald); display: inline-block; }
+  .status-dot.warn { background: var(--amber); }
+  .id-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42vw; }
+
+  .nav-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  /* Buttons & Inputs */
+  button {
+    font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--border-strong);
+    background: rgba(255, 255, 255, 0.04); color: var(--text); padding: 7px 13px;
+    transition: background .15s, border-color .15s, transform .08s;
+  }
+  button:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.26); }
+  button:active { transform: scale(0.98); }
+  button.primary { background: var(--amber); color: #111; border-color: var(--amber); font-weight: 600; }
+  button.primary:hover { background: #fbb942; border-color: #fbb942; }
+  button.ghost { background: transparent; border-color: var(--border); color: #dbe2ec; }
+  button.danger { border-color: rgba(251, 113, 133, 0.4); color: var(--rose); }
+  button.sm { padding: 5px 10px; font-size: 12.5px; border-radius: 8px; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .badge { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); margin-left: 4px; font-weight: 600; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); }
   .pill.ok { color: var(--emerald); border-color: rgba(16,185,129,0.4); }
-  .pill.warn { color: var(--amber); border-color: rgba(245,158,11,0.45); background: var(--amber-soft); }
-  .top-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .pill.warn { color: var(--amber); border-color: rgba(245,166,35,0.45); background: var(--amber-soft); }
 
-  .banner { padding: 10px 18px; background: var(--amber-soft); border-bottom: 1px solid rgba(245,158,11,0.35); color: #fcd34d; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
-  .banner.hidden { display: none; }
+  input, select, textarea.field {
+    width: 100%; background: #0d1118; border: 1px solid var(--border-strong); border-radius: 10px;
+    color: var(--text); padding: 9px 12px; font: inherit; outline: none; transition: border-color .15s;
+  }
+  input:focus, select:focus, textarea.field:focus { border-color: var(--amber); }
 
-  .messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  /* Conversation Canvas */
+  .messages { flex: 1; overflow-y: auto; padding: 24px 20px 16px; display: flex; flex-direction: column; gap: 14px; }
   .msg-row { display: flex; flex-direction: column; max-width: 78%; gap: 4px; }
   .msg-row.user { align-self: flex-end; align-items: flex-end; }
   .msg-row.assistant { align-self: flex-start; align-items: flex-start; }
   .msg-row.ambient { align-self: center; align-items: center; max-width: 90%; }
-  .bubble { padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; }
-  .msg-row.user .bubble { background: #263245; border: 1px solid #384a66; border-bottom-right-radius: 4px; }
-  .msg-row.assistant .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  .msg-row.ambient .bubble { background: rgba(245,158,11,0.1); border: 1px dashed rgba(245,158,11,0.45); color: #fde68a; font-size: 13px; }
-  .meta-line { font-size: 11px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .typing-indicator { padding: 8px 18px; font-size: 12px; color: var(--amber); min-height: 26px; }
+  .bubble { padding: 11px 16px; border-radius: 18px; white-space: pre-wrap; word-break: break-word; }
+  .msg-row.user .bubble { background: #24334a; border: 1px solid rgba(116, 160, 224, 0.25); border-bottom-right-radius: 5px; }
+  .msg-row.assistant .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
+  .msg-row.ambient .bubble { background: rgba(245, 166, 35, 0.08); border: 1px dashed rgba(245, 166, 35, 0.35); color: #f7d794; font-size: 13px; border-radius: 12px; }
+  .whisper { font-size: 11.5px; color: var(--amber); opacity: 0.85; cursor: pointer; padding: 0 4px; }
+  .whisper:hover { opacity: 1; text-decoration: underline; }
+  .meta-line { font-size: 11.5px; color: var(--muted); }
 
-  .composer { display: flex; gap: 10px; padding: 12px 18px 16px; background: var(--panel); border-top: 1px solid var(--border); }
-  .composer textarea { flex: 1; resize: none; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 12px; font: inherit; min-height: 44px; max-height: 120px; outline: none; }
-  .composer textarea:focus { border-color: var(--amber); }
+  /* First-Run 10-Second Onboarding Card (auto-hides once connected) */
+  .onboarding {
+    margin: auto; width: 100%; max-width: 520px; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 14px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+  .onboarding.hidden { display: none; }
+  .onboarding h2 { margin: 0; font-size: 18px; font-weight: 700; }
+  .onboarding p { margin: 0; font-size: 13px; color: var(--muted); }
 
-  /* Buttons & Inputs */
-  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 6px 12px; transition: border-color .15s, background .15s; }
-  button:hover { border-color: #4b5563; background: #222b38; }
-  button.primary { background: var(--amber); color: #111; border-color: var(--amber); font-weight: 600; }
-  button.primary:hover { background: #fbbf24; }
-  button.danger { border-color: rgba(251,113,133,0.45); color: var(--rose); }
-  button.sm { padding: 4px 9px; font-size: 12px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  input, select, textarea.field { width: 100%; background: #0f141c; border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font: inherit; outline: none; }
-  input:focus, select:focus, textarea.field:focus { border-color: var(--amber); }
+  .typing { min-height: 22px; padding: 0 24px 6px; font-size: 12px; color: var(--amber); }
 
-  /* Right Cognitive Inspector */
-  .inspector { display: flex; flex-direction: column; background: var(--panel); min-height: 0; }
-  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
-  .tab-btn { border: none; border-radius: 0; background: transparent; padding: 11px 4px; font-size: 12px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
-  .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); background: rgba(245,158,11,0.06); font-weight: 600; }
-  .tab-body { flex: 1; overflow-y: auto; padding: 14px; display: none; flex-direction: column; gap: 12px; }
-  .tab-body.active { display: flex; }
+  .composer-wrap { padding: 10px 18px 18px; flex-shrink: 0; }
+  .composer {
+    display: flex; align-items: flex-end; gap: 10px; background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 16px; padding: 8px 10px 8px 14px;
+    transition: border-color .15s;
+  }
+  .composer:focus-within { border-color: rgba(245, 166, 35, 0.65); }
+  .composer textarea {
+    flex: 1; resize: none; background: transparent; border: none; color: var(--text);
+    padding: 5px 0; font: inherit; min-height: 28px; max-height: 120px; outline: none;
+  }
 
-  .mem-card-item { padding: 10px 12px; background: #10151e; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
-  .mem-card-item.pinned { border-color: rgba(245,158,11,0.55); background: linear-gradient(180deg, rgba(245,158,11,0.08), #10151e); }
-  .mem-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .mem-card-title { font-weight: 600; font-size: 13px; color: #f8fafc; }
-  .mem-card-body { font-size: 12.5px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
-  .mem-card-quote { font-size: 11.5px; color: var(--muted); border-left: 2px solid var(--border); padding-left: 8px; }
-  .mem-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .chip.active { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+  /* Slide-Over Drawers (Memory Cards & Settings) */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40;
+  }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 94vw);
+    background: var(--surface); border-left: 1px solid var(--border-strong);
+    transform: translateX(100%); transition: transform .22s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex; flex-direction: column; z-index: 50; box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .drawer-head h2 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px 28px; display: flex; flex-direction: column; gap: 14px; }
 
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .card h3 { margin: 0; font-size: 13px; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center; }
-  .bar-row { display: grid; grid-template-columns: 56px 1fr 38px; align-items: center; gap: 8px; font-size: 12px; }
-  .bar-track { height: 7px; border-radius: 999px; background: #0d1117; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 999px; transition: width .35s ease; }
-
+  .section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .section h3 { margin: 0; font-size: 13.5px; color: #dbe2ec; display: flex; justify-content: space-between; align-items: center; }
   .chip-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { font-size: 11px; padding: 4px 8px; border-radius: 999px; background: #10151e; border: 1px solid var(--border); color: #cbd5e1; cursor: pointer; }
-  .chip:hover { border-color: var(--amber); color: var(--amber); }
-
-  .fact-item { font-size: 12px; padding: 6px 8px; background: #10151e; border: 1px solid var(--border); border-radius: 8px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-  .fact-item.hist { opacity: 0.65; text-decoration: line-through; }
-  .entry-box { font-size: 12px; padding: 8px 10px; background: #10151e; border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
-  .entry-title { font-weight: 600; color: #f8fafc; display: flex; justify-content: space-between; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: #cbd5e1; cursor: pointer; }
+  .chip:hover, .chip.active { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .label-sm { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
-  .status-box { font-size: 12px; padding: 8px 10px; border-radius: 8px; background: #10151e; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
-  .status-box.ok { border-color: rgba(16,185,129,0.5); color: #6ee7b7; }
-  .status-box.err { border-color: rgba(251,113,133,0.5); color: #fda4af; }
-  .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .status-box { font-size: 12px; padding: 8px 11px; border-radius: 10px; background: #0e131b; border: 1px solid var(--border); color: var(--muted); white-space: pre-wrap; word-break: break-word; }
+  .status-box.ok { border-color: rgba(16,185,129,0.45); color: #6ee7b7; }
+  .status-box.err { border-color: rgba(251,113,133,0.45); color: #fda4af; }
+
+  .mem-card { padding: 12px; background: #10151f; border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .mem-card.pinned { border-color: rgba(245, 166, 35, 0.5); background: linear-gradient(180deg, rgba(245,166,35,0.08), #10151f); }
+  .mem-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .mem-card-title { font-weight: 600; font-size: 13.5px; }
+  .mem-card-body { font-size: 13px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+  .mem-card-quote { font-size: 11.5px; color: var(--muted); border-left: 2px solid var(--border-strong); padding-left: 8px; }
+  .mem-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 2px; }
+
+  /* Collapsible Developer Inspector inside Settings */
+  details.dev-box { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 10px 14px; background: rgba(255,255,255,0.015); }
+  details.dev-box summary { cursor: pointer; font-size: 12.5px; color: var(--muted); font-weight: 600; user-select: none; }
+  details.dev-box[open] summary { color: var(--amber); margin-bottom: 12px; }
+  .dev-stack { display: flex; flex-direction: column; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 52px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; }
+  .bar-track { height: 6px; border-radius: 999px; background: #0c1016; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .3s ease; }
+  .fact-item { font-size: 12px; padding: 6px 9px; background: #0e131b; border: 1px solid var(--border); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .fact-item.hist { opacity: 0.6; text-decoration: line-through; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
-<div class="app">
-  <!-- Left: Real Companion Conversation -->
-  <section class="chat-pane">
-    <header class="topbar">
-      <div class="brand">
-        <div class="avatar" id="avatarLetter">汐</div>
-        <div>
-          <div class="brand-title">
-            <span id="companionName">小汐</span>
-            <span class="pill ok" id="moodPill">松弛自然</span>
-            <span class="pill" id="modelPill">未配置</span>
-          </div>
-          <div class="meta-line" id="innerLifeLine">SoulCard · Cloud-First Companion Studio</div>
+
+<div class="shell">
+  <!-- Minimal 3-Action Topbar (Companion Status + Memory Cards + Settings) -->
+  <header class="topbar">
+    <div class="identity">
+      <div class="avatar" id="avatarLetter">汐</div>
+      <div class="id-text">
+        <div class="id-name">
+          <span id="companionName">小汐</span>
+          <span class="status-dot" id="connDot" title="模型连接状态"></span>
         </div>
+        <div class="id-sub" id="statusSub">正在安静等你发消息</div>
       </div>
-      <div class="top-actions">
-        <button class="sm" id="ambientBtn" title="模拟 6 层防打扰主动轻敲">轻敲预览</button>
-        <button class="sm primary" id="openSetupBtn">云端模型 / Key</button>
-      </div>
-    </header>
-
-    <div class="banner hidden" id="setupBanner">
-      <span>无需显卡 · 纯云端即开即聊！点右侧选 Claude / GPT / Gemini / Grok / DeepSeek 或任意中转站贴 Key，10 秒开聊。</span>
-      <button class="sm primary" id="bannerSetupBtn">10 秒配置</button>
     </div>
-
-    <div class="messages" id="messages"></div>
-    <div class="typing-indicator" id="typingIndicator"></div>
-
-    <div class="composer">
-      <textarea id="chatInput" rows="1" placeholder="像平时聊天一样发句话（Enter 发送，Shift+Enter 换行）..."></textarea>
-      <button class="primary" id="sendBtn">发送</button>
-    </div>
-  </section>
-
-  <!-- Right: Live Cognitive Inspector -->
-  <aside class="inspector">
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="cards">记忆卡 <span id="cardsTabBadge">0</span></button>
-      <button class="tab-btn" data-tab="mind">活心智</button>
-      <button class="tab-btn" data-tab="growth">成长 & 灵魂</button>
-      <button class="tab-btn" data-tab="setup">云端 & 人设</button>
+    <nav class="nav-actions">
+      <button class="ghost sm" id="openCardsBtn">🃏 记忆卡<span class="badge" id="cardsTopBadge">0</span></button>
+      <button class="ghost sm" id="openSetupBtn">⚙️ 设置</button>
     </nav>
+  </header>
 
-    <!-- Tab 0: Portable Future-Companion Memory Cards -->
-    <div class="tab-body active" id="tab-cards">
-      <div class="card">
-        <h3>未来伴侣记忆卡（跨模型永久存卡） <span class="pill ok" id="cardsTotalPill">0 张</span></h3>
-        <div class="meta-line">把想让 TA 永远记住的偏好、约定与珍贵瞬间存成「记忆卡」，换 Claude / GPT / Gemini / Grok 或换电脑插卡即复活。</div>
-        <div style="display:grid;grid-template-columns:1fr 104px;gap:6px;">
-          <input id="cardTitle" placeholder="标题（如：我们的周末约定 / 我不吃香菜）" />
-          <select id="cardCategory">
-            <option value="pinned">★ 挚爱置顶</option>
-            <option value="preference">♡ 偏好习惯</option>
-            <option value="promise">✦ 共同约定</option>
-            <option value="moment" selected>✿ 珍贵瞬间</option>
-            <option value="inspiration">✎ 灵感手账</option>
-          </select>
-        </div>
-        <textarea class="field" id="cardContent" rows="2" placeholder="写下想让未来陪伴人牢牢记住的话、习惯、故事或约定（自动拦截密钥隐私）..."></textarea>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
-            <input type="checkbox" id="cardPinned" style="width:auto;" /> 置顶为常驻记忆
-          </label>
-          <div class="row-actions">
-            <button class="sm primary" id="addCardBtn">+ 存入记忆卡</button>
-            <button class="sm" id="mintCardsBtn" title="用当前云端模型从最近聊天自动提炼记忆卡">✨ AI 提炼记忆卡</button>
-          </div>
-        </div>
-        <div class="row-actions" style="border-top:1px solid var(--border);padding-top:8px;">
-          <button class="sm" id="exportCardsJsonBtn">💾 导出存卡 (.json)</button>
-          <button class="sm" id="exportCardsMdBtn">📖 导出卡册 (.md)</button>
-          <button class="sm" id="importCardsBtn">📥 插卡导入</button>
-          <input type="file" id="importCardsFile" accept=".json,application/json" style="display:none" />
-        </div>
-        <div class="status-box" id="cardsStatus">支持手动铸卡、AI 从对话提炼、跨模型无损导入导出；所有置顶卡会在每次对话自动生效。</div>
+  <!-- Calm Conversation Area -->
+  <main class="messages" id="messages">
+    <!-- First-Run Onboarding Card (auto-hides once configured!) -->
+    <div class="onboarding hidden" id="onboardingCard">
+      <h2>👋 欢迎来到 SoulCard</h2>
+      <p>无需显卡、无需安装本地模型。选一个云端大模型（Claude / GPT / Gemini / Grok / DeepSeek 或任意中转站），贴入 API Key 就能开始长期陪伴聊天；你们的记忆会沉淀成可随时带走的「记忆卡」。</p>
+      <div class="chip-grid" id="quickPresetChips"></div>
+      <div>
+        <label class="label-sm">接口网址（裸域名、/v1、完整路径随便粘）</label>
+        <input id="quickUrl" placeholder="例如 https://api.deepseek.com 或你的中转站网址" />
       </div>
-
-      <div class="card">
-        <h3>我的记忆卡墙</h3>
-        <input id="cardSearch" placeholder="搜索记忆卡标题、内容或标签..." />
-        <div class="chip-grid" id="cardFilterChips">
-          <button type="button" class="chip active" data-cat="all">全部</button>
-          <button type="button" class="chip" data-cat="pinned">★ 置顶</button>
-          <button type="button" class="chip" data-cat="preference">♡ 偏好</button>
-          <button type="button" class="chip" data-cat="promise">✦ 约定</button>
-          <button type="button" class="chip" data-cat="moment">✿ 瞬间</button>
-          <button type="button" class="chip" data-cat="inspiration">✎ 手账</button>
-        </div>
-        <div id="cardsList" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-    </div>
-
-    <!-- Tab 1: Mind -->
-    <div class="tab-body" id="tab-mind">
-      <div class="card">
-        <h3>3D PAD 连续情绪 <span class="pill" id="padLabel">-</span></h3>
-        <div class="bar-row"><span>愉悦 P</span><div class="bar-track"><div class="bar-fill" id="barP" style="background:var(--amber);width:60%"></div></div><span id="valP">60</span></div>
-        <div class="bar-row"><span>精力 A</span><div class="bar-track"><div class="bar-fill" id="barA" style="background:var(--rose);width:50%"></div></div><span id="valA">50</span></div>
-        <div class="bar-row"><span>笃定 D</span><div class="bar-track"><div class="bar-fill" id="barD" style="background:var(--sky);width:55%"></div></div><span id="valD">55</span></div>
-        <div class="meta-line" id="padToneHint"></div>
-      </div>
-
-      <div class="card">
-        <h3>DMN 内生生活流 <span class="pill" id="innerSlot">-</span></h3>
-        <div id="innerActivity" style="font-size:13px;"></div>
-      </div>
-
-      <div class="card">
-        <h3>心里惦记 (Diary Open Loops) <span class="pill" id="loopsCount">0</span></h3>
-        <div id="loopsList" style="display:flex;flex-direction:column;gap:6px;"></div>
-      </div>
-
-      <div class="card">
-        <h3>双时态知识图谱 <span class="pill" id="triplesCount">0 活跃 / 0 历史</span></h3>
-        <div id="triplesList" style="display:flex;flex-direction:column;gap:6px;"></div>
-      </div>
-    </div>
-
-    <!-- Tab 2: Growth & Soul Ledger -->
-    <div class="tab-body" id="tab-growth">
-      <div class="card">
-        <h3>成长整理与灵魂账本 v1 <span class="pill ok" id="declutterBadge">精简健康</span></h3>
-        <div class="row-actions">
-          <button class="sm primary" id="runDailyBtn">睡前日记整理</button>
-          <button class="sm" id="runWeeklyBtn">周度成长复盘</button>
-          <button class="sm" id="runMonthlyBtn">L3 月度自传</button>
-          <button class="sm" id="exportSoulBtn">导出灵魂账本</button>
-          <button class="sm" id="importSoulBtn">导入还原</button>
-          <input type="file" id="importSoulFile" accept=".json,application/json" style="display:none" />
-        </div>
-        <div class="status-box" id="growthStatus">点击上方按钮可实时把对话沉淀为第一人称日记、周里程碑、月度自传或可跨模型迁移的 JSON 灵魂账本。</div>
-      </div>
-
-      <div class="card">
-        <h3>体验学习 & 社交体感成长 <span class="pill" id="studyCountBadge">0 篇随笔</span></h3>
-        <div class="meta-line">把好文章、想法或资料喂给 TA 读，TA 会写第一人称真实感想并长出自己的小好奇（与私人记忆卡分离，不串味）。</div>
-        <input id="studyTitle" placeholder="主题/标题（如：胶片调色心得 / 一篇影评）" />
-        <textarea class="field" id="studyContent" rows="2" placeholder="粘贴想分享给 TA 体验学习的文章片段、笔记或点子..."></textarea>
-        <div class="row-actions">
-          <button class="sm primary" id="studyLearnBtn">📖 分享给 TA 学习体验</button>
-          <button class="sm" id="socialReflectBtn">🪞 社交体感复盘</button>
-        </div>
-        <div class="status-box" id="studyStatus">支持纯云端学习消化与自动淘汰生硬旧规矩，零显卡流畅运行。</div>
-        <div id="curiosityChips" class="chip-grid"></div>
-        <div id="studyNotesList" style="display:flex;flex-direction:column;gap:6px;"></div>
-      </div>
-
-      <div class="card">
-        <h3>近期成长日记 <span class="pill" id="diaryCount">0</span></h3>
-        <div id="diaryList" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-
-      <div class="card">
-        <h3>周度里程碑 & 月度自传</h3>
-        <div id="milestoneList" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-    </div>
-
-    <!-- Tab 3: Universal Relay Setup & Persona -->
-    <div class="tab-body" id="tab-setup">
-      <div class="card">
-        <h3>全云端大模型一键接入（Claude · GPT · Gemini · Grok · DeepSeek · 中转站）</h3>
-        <div class="meta-line">普通轻薄本零显卡流畅运行！点选下方任意云端厂商或中转站预设，贴入 API Key 即可开聊。</div>
-        <div class="chip-grid" id="presetChips"></div>
+      <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;">
         <div>
-          <label class="label-sm">中转站或官网网址（裸域名、/v1、/v1/chat/completions、/v1/messages 随便粘）</label>
-          <input id="cfgUrl" placeholder="例如 https://your-relay.com 或 https://api.deepseek.com" />
-          <div class="meta-line" id="cfgPreview" style="margin-top:4px;"></div>
+          <label class="label-sm">API Key</label>
+          <input id="quickKey" type="password" placeholder="粘贴 sk-... (本地 Ollama 可留空)" />
         </div>
         <div>
-          <label class="label-sm">API Key（自动清理空格、引号与多余 Bearer 前缀；本地 Ollama 可留空）</label>
-          <input id="cfgKey" type="password" placeholder="粘贴 sk-... 或留空保持已保存的 Key" />
-          <div class="meta-line" id="cfgKeyMask" style="margin-top:3px;"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 120px;gap:8px;">
-          <div>
-            <label class="label-sm">模型名称（可点右侧按钮自动拉取）</label>
-            <input id="cfgModel" placeholder="deepseek-chat / gpt-4o-mini / qwen-plus" />
-          </div>
-          <div>
-            <label class="label-sm">协议模式</label>
-            <select id="cfgProto">
-              <option value="auto">auto (自动)</option>
-              <option value="openai">openai</option>
-              <option value="anthropic">anthropic</option>
-              <option value="gemini">gemini</option>
-              <option value="ollama">ollama</option>
-            </select>
-          </div>
-        </div>
-        <div id="modelPickerRow" style="display:none;">
-          <label class="label-sm">从中转站拉取到的可用模型：</label>
-          <select id="discoveredModels"></select>
-        </div>
-        <div class="row-actions">
-          <button class="sm" id="fetchModelsBtn">自动拉取模型列表</button>
-          <button class="sm primary" id="saveConfigBtn">测试连通并保存 .env</button>
-        </div>
-        <div class="status-box" id="cfgStatus">支持任意 NewAPI / One-API 中转站、国内直连 API 与本地离线模型。</div>
-      </div>
-
-      <div class="card">
-        <h3>伴侣人设与拟人节奏</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div><label class="label-sm">名字</label><input id="pName" /></div>
-          <div><label class="label-sm">称呼你为</label><input id="pPartner" /></div>
-        </div>
-        <div><label class="label-sm">说话节奏模式</label>
-          <select id="pPacing">
-            <option value="natural">natural (真人多气泡打字感)</option>
-            <option value="relaxed">relaxed (从容慢回)</option>
-            <option value="instant">instant (极速直出)</option>
-          </select>
-        </div>
-        <div><label class="label-sm">语感风格</label><textarea class="field" id="pVoice" rows="2"></textarea></div>
-        <div><label class="label-sm">记忆诚实与自主边界</label><textarea class="field" id="pBoundaries" rows="2"></textarea></div>
-        <div class="row-actions">
-          <button class="sm primary" id="savePersonaBtn">保存人设</button>
-          <button class="sm danger" id="resetMemBtn">彻底清空记忆（零残留）</button>
+          <label class="label-sm">模型名</label>
+          <input id="quickModel" placeholder="deepseek-chat" />
         </div>
       </div>
+      <button class="primary" id="quickStartBtn">连通并开始聊天</button>
+      <div class="status-box hidden" id="quickStatus"></div>
     </div>
-  </aside>
+  </main>
+
+  <div class="typing" id="typingIndicator"></div>
+
+  <!-- Minimal Single-Action Composer -->
+  <footer class="composer-wrap">
+    <div class="composer">
+      <textarea id="chatInput" rows="1" placeholder="和 TA 随便聊点什么（说“帮我记住…”会自动存进记忆卡）..."></textarea>
+      <button class="primary sm" id="sendBtn">发送</button>
+    </div>
+  </footer>
 </div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<!-- Drawer 1: Portable Future-Companion Memory Cards -->
+<aside class="drawer" id="tab-cards" aria-label="记忆卡">
+  <div class="drawer-head">
+    <h2>🃏 未来伴侣记忆卡 <span class="pill ok" id="cardsTotalPill">0 张</span></h2>
+    <button class="ghost sm" data-close-drawer>✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="row-actions">
+      <button class="primary sm" id="toggleNewCardBtn">+ 写一张卡</button>
+      <button class="sm" id="exportCardsJsonBtn" title="导出跨模型完整存卡包（含记忆卡、人设、事实与日记）">💾 导出存卡</button>
+      <button class="sm" id="exportCardsMdBtn" title="导出人类可读 Markdown 记忆书">📖 记忆书</button>
+      <button class="sm" id="importCardsBtn" title="无损合并导入记忆卡包或旧灵魂账本 JSON">📥 插卡恢复</button>
+      <input type="file" id="importCardsFile" accept=".json,application/json" style="display:none" />
+    </div>
+
+    <div class="section hidden" id="newCardForm">
+      <h3>写下想让 TA 永远记住的事</h3>
+      <div style="display:grid;grid-template-columns:1fr 104px;gap:8px;">
+        <input id="cardTitle" placeholder="标题（如：饮食偏好 / 共同约定）" />
+        <select id="cardCategory">
+          <option value="pinned">★ 挚爱置顶</option>
+          <option value="preference">♡ 偏好习惯</option>
+          <option value="promise">✦ 共同约定</option>
+          <option value="moment" selected>✿ 珍贵瞬间</option>
+          <option value="inspiration">✎ 灵感手账</option>
+        </select>
+      </div>
+      <textarea class="field" id="cardContent" rows="2" placeholder="内容会自然融入对话，换 Claude / GPT / Gemini / Grok 插卡即可带走..."></textarea>
+      <div class="row-actions" style="justify-content:space-between;">
+        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="checkbox" id="cardPinned" style="width:auto;" /> 置顶为常驻记忆
+        </label>
+        <button class="primary sm" id="addCardBtn">存入记忆卡</button>
+      </div>
+    </div>
+
+    <div class="status-box hidden" id="cardsStatus"></div>
+
+    <input id="cardSearch" placeholder="搜索记忆卡..." />
+    <div class="chip-grid" id="cardFilterChips">
+      <button type="button" class="chip active" data-cat="all">全部</button>
+      <button type="button" class="chip" data-cat="pinned">★ 置顶</button>
+      <button type="button" class="chip" data-cat="preference">♡ 偏好</button>
+      <button type="button" class="chip" data-cat="promise">✦ 约定</button>
+      <button type="button" class="chip" data-cat="moment">✿ 瞬间</button>
+      <button type="button" class="chip" data-cat="inspiration">✎ 手账</button>
+    </div>
+
+    <div id="cardsList" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+    <div style="padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span class="meta-line">也可以从最近聊天里自动提炼</span>
+      <button class="ghost sm" id="mintCardsBtn">✨ AI 提炼记忆卡</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Drawer 2: Clean Settings + Collapsed Developer Inspector -->
+<aside class="drawer" id="drawer-setup" aria-label="设置">
+  <div class="drawer-head">
+    <h2>⚙️ 设置</h2>
+    <button class="ghost sm" data-close-drawer>✕</button>
+  </div>
+  <div class="drawer-body">
+    <!-- Essential 1: Cloud Model Connection -->
+    <div class="section">
+      <h3>云端大模型接入 <span class="pill" id="modelPill">未配置</span></h3>
+      <div class="chip-grid" id="presetChips"></div>
+      <div>
+        <label class="label-sm">接口网址（任意官网或中转站）</label>
+        <input id="cfgUrl" placeholder="https://api.deepseek.com 或中转站域名" />
+        <div class="meta-line" id="cfgPreview" style="margin-top:4px;"></div>
+      </div>
+      <div>
+        <label class="label-sm">API Key（自动清理空格与多余 Bearer）</label>
+        <input id="cfgKey" type="password" placeholder="粘贴 Key 或留空保持已保存的 Key" />
+        <div class="meta-line" id="cfgKeyMask" style="margin-top:3px;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 112px;gap:8px;">
+        <div>
+          <label class="label-sm">模型名</label>
+          <input id="cfgModel" placeholder="claude-sonnet-4-5 / gpt-4o / deepseek-chat" />
+        </div>
+        <div>
+          <label class="label-sm">协议</label>
+          <select id="cfgProto">
+            <option value="auto">自动</option>
+            <option value="openai">openai</option>
+            <option value="anthropic">anthropic</option>
+            <option value="gemini">gemini</option>
+            <option value="ollama">ollama</option>
+          </select>
+        </div>
+      </div>
+      <div id="modelPickerRow" class="hidden">
+        <label class="label-sm">拉取到的可用模型：</label>
+        <select id="discoveredModels"></select>
+      </div>
+      <div class="row-actions">
+        <button class="sm" id="fetchModelsBtn">拉取模型列表</button>
+        <button class="primary sm" id="saveConfigBtn">测试并保存</button>
+      </div>
+      <div class="status-box hidden" id="cfgStatus"></div>
+    </div>
+
+    <!-- Essential 2: Companion Identity & Auto-Growth Toggle -->
+    <div class="section">
+      <h3>伴侣设定</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><label class="label-sm">TA 的名字</label><input id="pName" /></div>
+        <div><label class="label-sm">称呼你为</label><input id="pPartner" /></div>
+      </div>
+      <div>
+        <label class="label-sm">说话节奏</label>
+        <select id="pPacing">
+          <option value="natural">真人多气泡打字感（推荐）</option>
+          <option value="relaxed">从容慢回</option>
+          <option value="instant">极速直出</option>
+        </select>
+      </div>
+      <div><label class="label-sm">语感风格</label><textarea class="field" id="pVoice" rows="2"></textarea></div>
+      <div><label class="label-sm">边界与诚实原则</label><textarea class="field" id="pBoundaries" rows="2"></textarea></div>
+      <label style="font-size:12.5px;color:#cbd5e1;display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="pAutoGrowth" style="width:auto;" checked />
+        后台静默自动记卡与睡前沉淀（含成本节流，不每轮多烧 Token）
+      </label>
+      <div class="row-actions">
+        <button class="primary sm" id="savePersonaBtn">保存设定</button>
+      </div>
+      <div class="status-box hidden" id="personaStatus"></div>
+    </div>
+
+    <!-- Collapsed by Default: Developer & Cognitive Inspector (Zero Clutter for Everyday Users!) -->
+    <details class="dev-box" id="devInspector">
+      <summary>🔬 开发者透视与高级调试（默认隐藏）</summary>
+      <div class="dev-stack">
+        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="showTelemetryToggle" style="width:auto;" /> 在聊天气泡下显示模型耗时与召回调试信息
+        </label>
+
+        <div class="section">
+          <h3>3D PAD 连续情绪 <span class="pill" id="padLabel">-</span></h3>
+          <div class="bar-row"><span>愉悦 P</span><div class="bar-track"><div class="bar-fill" id="barP" style="background:var(--amber);width:60%"></div></div><span id="valP">60</span></div>
+          <div class="bar-row"><span>精力 A</span><div class="bar-track"><div class="bar-fill" id="barA" style="background:var(--rose);width:50%"></div></div><span id="valA">50</span></div>
+          <div class="bar-row"><span>笃定 D</span><div class="bar-track"><div class="bar-fill" id="barD" style="background:var(--sky);width:55%"></div></div><span id="valD">55</span></div>
+          <div class="meta-line" id="padToneHint"></div>
+        </div>
+
+        <div class="section">
+          <h3>双时态知识图谱 <span class="pill" id="triplesCount">0 / 0</span></h3>
+          <div id="triplesList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
+        <div class="section">
+          <h3>心里惦记 (Open Loops) <span class="pill" id="loopsCount">0</span></h3>
+          <div id="loopsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
+        <div class="section">
+          <h3>手动触发整理 & 体验投喂 <span class="pill ok" id="declutterBadge">健康</span></h3>
+          <input id="studyTitle" placeholder="分享阅读主题（可选）" />
+          <textarea class="field" id="studyContent" rows="2" placeholder="粘贴一段文章或笔记让 TA 写第一人称体验随笔..."></textarea>
+          <div class="row-actions">
+            <button class="sm" id="studyLearnBtn">📖 体验学习</button>
+            <button class="sm" id="socialReflectBtn">🪞 社交复盘</button>
+            <button class="sm" id="runDailyBtn">睡前日记</button>
+            <button class="sm" id="runWeeklyBtn">周成长</button>
+            <button class="sm" id="runMonthlyBtn">月自传</button>
+            <button class="sm" id="ambientBtn">轻敲预览</button>
+          </div>
+          <div class="status-box hidden" id="devStatus"></div>
+          <div id="curiosityChips" class="chip-grid"></div>
+          <div id="diaryList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
+        <div class="row-actions">
+          <button class="sm danger" id="resetMemBtn">清空对话与图谱（保留记忆卡）</button>
+        </div>
+      </div>
+    </details>
+  </div>
+</aside>
 
 <script>
 const $ = (id) => document.getElementById(id);
 let currentState = null;
 let sending = false;
 let activeCardFilter = "all";
+let quickProto = "auto";
+let quickRequiresKey = true;
 const CARD_CAT_LABELS = { pinned: "★ 挚爱置顶", preference: "♡ 偏好习惯", promise: "✦ 共同约定", moment: "✿ 珍贵瞬间", inspiration: "✎ 灵感手账" };
+
+function openDrawer(id) {
+  document.querySelectorAll(".drawer").forEach((d) => d.classList.toggle("open", d.id === id));
+  $("backdrop").classList.add("open");
+}
+function closeDrawers() {
+  document.querySelectorAll(".drawer").forEach((d) => d.classList.remove("open"));
+  $("backdrop").classList.remove("open");
+}
+$("openCardsBtn").onclick = () => openDrawer("tab-cards");
+$("openSetupBtn").onclick = () => openDrawer("drawer-setup");
+$("backdrop").onclick = closeDrawers;
+document.querySelectorAll("[data-close-drawer]").forEach((b) => { b.onclick = closeDrawers; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawers(); });
+
+$("toggleNewCardBtn").onclick = () => {
+  $("newCardForm").classList.toggle("hidden");
+  if (!$("newCardForm").classList.contains("hidden")) $("cardTitle").focus();
+};
+
+function showStatus(id, text, kind = "") {
+  const el = $(id);
+  el.className = "status-box" + (kind ? " " + kind : "");
+  el.textContent = text;
+  el.classList.remove("hidden");
+}
+
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(path, {
+      headers: { "content-type": "application/json", ...(opts.headers || {}) },
+      ...opts,
+    });
+    const text = await res.text();
+    try { return JSON.parse(text); } catch { return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 160)}` }; }
+  } catch (err) {
+    return { ok: false, error: `连接本地服务失败: ${err?.message || err}` };
+  }
+}
+
+function appendBubble(role, text, { whisper = "", telemetry = "" } = {}) {
+  const box = $("messages");
+  const row = document.createElement("div");
+  row.className = "msg-row " + role;
+  const b = document.createElement("div");
+  b.className = "bubble";
+  b.textContent = text;
+  row.appendChild(b);
+  if (whisper) {
+    const w = document.createElement("div");
+    w.className = "whisper";
+    w.textContent = whisper;
+    w.onclick = () => openDrawer("tab-cards");
+    row.appendChild(w);
+  }
+  if (telemetry && $("showTelemetryToggle")?.checked) {
+    const m = document.createElement("div");
+    m.className = "meta-line";
+    m.textContent = telemetry;
+    row.appendChild(m);
+  }
+  box.appendChild(row);
+  box.scrollTop = box.scrollHeight;
+}
 
 function renderCardsWall(cards = []) {
   const list = Array.isArray(cards) ? cards : [];
@@ -349,7 +491,7 @@ function renderCardsWall(cards = []) {
     }
     return true;
   });
-  $("cardsTabBadge").textContent = String(list.length);
+  $("cardsTopBadge").textContent = String(list.length);
   $("cardsTotalPill").textContent = `${list.length} 张 · ${list.filter((c) => c.pinned).length} 置顶`;
   const box = $("cardsList");
   box.textContent = "";
@@ -357,14 +499,14 @@ function renderCardsWall(cards = []) {
     const empty = document.createElement("div");
     empty.className = "meta-line";
     empty.textContent = list.length === 0
-      ? "还没有记忆卡：在上方写下第一张想让未来陪伴人永远记住的偏好或约定吧！"
-      : "当前筛选条件下没有匹配的记忆卡。";
+      ? "还没有记忆卡。平时聊天说“帮我记住…”会自动存卡，也可以点上方「+ 写一张卡」。"
+      : "没有匹配的记忆卡。";
     box.appendChild(empty);
     return;
   }
   for (const c of filtered) {
     const item = document.createElement("div");
-    item.className = "mem-card-item" + (c.pinned ? " pinned" : "");
+    item.className = "mem-card" + (c.pinned ? " pinned" : "");
 
     const head = document.createElement("div");
     head.className = "mem-card-head";
@@ -381,7 +523,7 @@ function renderCardsWall(cards = []) {
     body.textContent = String(c.content || "");
     item.append(head, body);
 
-    if (c.quote) {
+    if (c.quote && c.quote !== c.content) {
       const qEl = document.createElement("div");
       qEl.className = "mem-card-quote";
       qEl.textContent = `“${c.quote}”`;
@@ -393,19 +535,19 @@ function renderCardsWall(cards = []) {
     const meta = document.createElement("span");
     meta.className = "meta-line";
     const dStr = c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : "";
-    meta.textContent = `${dStr}${c.source === "ai_minted" ? " · AI提炼" : ""}`;
+    meta.textContent = `${dStr}${c.source === "auto_chat" ? " · 自动记住" : (c.source === "ai_minted" ? " · AI提炼" : "")}`;
 
     const btns = document.createElement("div");
     btns.className = "row-actions";
     const pinBtn = document.createElement("button");
-    pinBtn.className = "sm";
+    pinBtn.className = "ghost sm";
     pinBtn.textContent = c.pinned ? "取消置顶" : "★ 置顶";
     pinBtn.onclick = async () => {
       await api("/api/cards/update", { method: "POST", body: JSON.stringify({ id: c.id, patch: { pinned: !c.pinned } }) });
       await refreshState(false);
     };
     const delBtn = document.createElement("button");
-    delBtn.className = "sm danger";
+    delBtn.className = "ghost sm danger";
     delBtn.textContent = "删除";
     delBtn.onclick = async () => {
       if (!confirm(`确定删除记忆卡「${c.title}」吗？`)) return;
@@ -419,205 +561,37 @@ function renderCardsWall(cards = []) {
   }
 }
 
-function switchTab(name) {
-  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
-  document.querySelectorAll(".tab-body").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
-}
-document.querySelectorAll(".tab-btn").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
-$("openSetupBtn").addEventListener("click", () => switchTab("setup"));
-$("bannerSetupBtn").addEventListener("click", () => switchTab("setup"));
-
-async function api(path, opts = {}) {
-  try {
-    const res = await fetch(path, {
-      headers: { "content-type": "application/json", ...(opts.headers || {}) },
-      ...opts,
-    });
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 160)}` };
-    }
-  } catch (err) {
-    return { ok: false, error: `连接本地服务失败: ${err?.message || err}` };
-  }
-}
-
-function appendBubble(role, text, meta = "") {
-  const box = $("messages");
-  const row = document.createElement("div");
-  row.className = "msg-row " + role;
-  const b = document.createElement("div");
-  b.className = "bubble";
-  b.textContent = text;
-  row.appendChild(b);
-  if (meta) {
-    const m = document.createElement("div");
-    m.className = "meta-line";
-    m.textContent = meta;
-    row.appendChild(m);
-  }
-  box.appendChild(row);
-  box.scrollTop = box.scrollHeight;
-}
-
 function renderState(s) {
   currentState = s;
   const p = s.persona || {};
+  const configured = Boolean(s.llm?.configured);
+
   $("companionName").textContent = p.name || "小汐";
   $("avatarLetter").textContent = (p.name || "汐").slice(0, 1);
-  $("moodPill").textContent = `${s.pad.label} · P${Math.round(s.pad.pleasure * 100)} A${Math.round(s.pad.arousal * 100)} D${Math.round(s.pad.dominance * 100)}`;
-  $("modelPill").textContent = `${s.llm.model} (${s.llm.source})`;
-  $("modelPill").className = "pill " + (s.llm.configured ? "ok" : "warn");
-  $("setupBanner").classList.toggle("hidden", Boolean(s.llm.configured));
-  $("innerLifeLine").textContent = `SoulCard · ${s.innerLife.slotLabel || ""} ${s.innerLife.activity || ""}`;
+  $("connDot").className = "status-dot" + (configured ? "" : " warn");
+  $("statusSub").textContent = configured
+    ? `${s.innerLife?.activity || "在桌边发呆"} · ${s.pad?.label || "松弛自然"}`
+    : "点下方或右上角「设置」贴入云端 API Key，10 秒开聊";
 
-  // Memory Cards wall
+  $("onboardingCard").classList.toggle("hidden", configured || (s.recentTurns && s.recentTurns.length > 0));
+  $("modelPill").textContent = configured ? `${s.llm.model}` : "未配置";
+  $("modelPill").className = "pill " + (configured ? "ok" : "warn");
+
   renderCardsWall(s.memoryCards || []);
 
-  // Mind tab
-  $("padLabel").textContent = s.pad.label;
-  $("barP").style.width = `${Math.round(s.pad.pleasure * 100)}%`;
-  $("barA").style.width = `${Math.round(s.pad.arousal * 100)}%`;
-  $("barD").style.width = `${Math.round(s.pad.dominance * 100)}%`;
-  $("valP").textContent = Math.round(s.pad.pleasure * 100);
-  $("valA").textContent = Math.round(s.pad.arousal * 100);
-  $("valD").textContent = Math.round(s.pad.dominance * 100);
-  $("padToneHint").textContent = s.pad.toneHint || "";
-  $("innerSlot").textContent = s.innerLife.slotLabel || "日常";
-  $("innerActivity").textContent = s.innerLife.activity || "";
-
-  // Open Loops
-  const loops = s.activeOpenLoops || [];
-  $("loopsCount").textContent = String(loops.length);
-  $("loopsList").innerHTML = loops.length === 0
-    ? '<div class="meta-line">当前没有未了结的心里惦记（生成日记后会自动浮现）。</div>'
-    : "";
-  for (const l of loops) {
-    const div = document.createElement("div");
-    div.className = "fact-item";
-    const span = document.createElement("span");
-    span.textContent = `[${l.fromDate || "近期"}] ${l.text}`;
-    const btn = document.createElement("button");
-    btn.className = "sm";
-    btn.textContent = "✓ 已聊过";
-    btn.onclick = async () => {
-      await api("/api/open-loops/resolve", { method: "POST", body: JSON.stringify({ key: l.key }) });
-      await refreshState(false);
-    };
-    div.append(span, btn);
-    $("loopsList").appendChild(div);
-  }
-
-  // Bi-temporal Graph
-  const act = s.activeTriples || [];
-  const hist = s.historicalTriples || [];
-  $("triplesCount").textContent = `${act.length} 活跃 / ${hist.length} 历史`;
-  const tl = $("triplesList");
-  tl.innerHTML = (act.length + hist.length) === 0
-    ? '<div class="meta-line">聊起喜好、计划或讨厌的事时，会自动沉淀为双时态知识图谱。</div>'
-    : "";
-  for (const t of act.slice(-10).reverse()) {
-    const div = document.createElement("div");
-    div.className = "fact-item";
-    div.textContent = `${t.subject}${Number(t.polarity) < 0 ? "不" : ""}${t.predicate}「${t.object}」`;
-    tl.appendChild(div);
-  }
-  for (const h of hist.slice(-4).reverse()) {
-    const div = document.createElement("div");
-    div.className = "fact-item hist";
-    div.textContent = `（已演变）${h.subject}${Number(h.polarity) < 0 ? "不" : ""}${h.predicate}「${h.object}」`;
-    tl.appendChild(div);
-  }
-
-  // Growth tab
-  $("declutterBadge").textContent = `${s.declutter?.statusLabel || "精简健康"} · 活跃${s.declutter?.activeRuleCount || 0} / 卸载${s.declutter?.retiredCount || 0}`;
-
-  const desk = s.growthDesk || {};
-  const studyNotes = desk.studyNotes || [];
-  $("studyCountBadge").textContent = `${studyNotes.length} 篇随笔 · ${(desk.socialIntuitions || []).length} 条体感`;
-  const curBox = $("curiosityChips");
-  curBox.textContent = "";
-  for (const c of (desk.curiosities || []).slice(0, 4)) {
-    const pill = document.createElement("span");
-    pill.className = "pill";
-    pill.textContent = `✦ ${String(c.topic || "")}`;
-    curBox.appendChild(pill);
-  }
-  const snBox = $("studyNotesList");
-  snBox.textContent = "";
-  for (const n of studyNotes.slice(0, 4)) {
-    const el = document.createElement("div");
-    el.className = "entry-box";
-    const head = document.createElement("div");
-    head.className = "entry-title";
-    const t = document.createElement("span");
-    t.textContent = String(n.title || "");
-    const cat = document.createElement("span");
-    cat.className = "pill";
-    cat.textContent = String(n.category || "体验");
-    head.append(t, cat);
-    const body = document.createElement("div");
-    body.textContent = String(n.reaction || "");
-    el.append(head, body);
-    snBox.appendChild(el);
-  }
-
-  $("diaryCount").textContent = String((s.diaries || []).length);
-  const dl = $("diaryList");
-  dl.innerHTML = (s.diaries || []).length === 0 ? '<div class="meta-line">聊满 6 条后点「睡前日记整理」即可生成真实第一人称日记。</div>' : "";
-  for (const d of (s.diaries || []).slice(0, 6)) {
-    const el = document.createElement("div");
-    el.className = "entry-box";
-    const head = document.createElement("div");
-    head.className = "entry-title";
-    const dateSpan = document.createElement("span");
-    dateSpan.textContent = String(d.dateKey || "");
-    const moodSpan = document.createElement("span");
-    moodSpan.className = "pill";
-    moodSpan.textContent = String(d.dayMood || "");
-    head.append(dateSpan, moodSpan);
-    const bodyDiv = document.createElement("div");
-    bodyDiv.textContent = String(d.diaryEntry || "");
-    el.append(head, bodyDiv);
-    dl.appendChild(el);
-  }
-
-  const ml = $("milestoneList");
-  const combined = [
-    ...(s.chapters || []).map((c) => ({ badge: `月度 ${c.monthKey}`, title: c.chapterTitle, body: c.narrative })),
-    ...(s.milestones || []).map((m) => ({ badge: `周度 ${m.weekKey}`, title: m.theme, body: m.milestone })),
-  ];
-  ml.innerHTML = combined.length === 0 ? '<div class="meta-line">生成日记后，点击「周度成长复盘」或「L3 月度自传」沉淀长期成长。</div>' : "";
-  for (const item of combined.slice(0, 6)) {
-    const el = document.createElement("div");
-    el.className = "entry-box";
-    const head = document.createElement("div");
-    head.className = "entry-title";
-    const titleSpan = document.createElement("span");
-    titleSpan.textContent = String(item.title || "");
-    const badgeSpan = document.createElement("span");
-    badgeSpan.className = "pill";
-    badgeSpan.textContent = String(item.badge || "");
-    head.append(titleSpan, badgeSpan);
-    const bodyDiv = document.createElement("div");
-    bodyDiv.textContent = String(item.body || "");
-    el.append(head, bodyDiv);
-    ml.appendChild(el);
-  }
-
-  // Setup tab (never overwrite inputs the user is actively editing)
+  // Populate Setup inputs without overwriting focused fields
   const activeId = document.activeElement?.id || "";
-  if (!$("cfgUrl").value && activeId !== "cfgUrl") $("cfgUrl").value = s.llm.baseUrl || "";
-  if (!$("cfgModel").value && activeId !== "cfgModel") $("cfgModel").value = s.llm.model || "";
-  $("cfgKeyMask").textContent = `当前已保存 Key: ${s.llm.maskedKey || "(空)"}`;
+  if (!$("cfgUrl").value && activeId !== "cfgUrl") $("cfgUrl").value = s.llm?.baseUrl || "";
+  if (!$("cfgModel").value && activeId !== "cfgModel") $("cfgModel").value = s.llm?.model || "";
+  $("cfgKeyMask").textContent = `已保存 Key: ${s.llm?.maskedKey || "(空)"}`;
   if (activeId !== "pName") $("pName").value = p.name || "";
   if (activeId !== "pPartner") $("pPartner").value = p.partnerName || "";
   if (activeId !== "pPacing") $("pPacing").value = p.pacingMode || "natural";
   if (activeId !== "pVoice") $("pVoice").value = p.voiceStyle || "";
   if (activeId !== "pBoundaries") $("pBoundaries").value = p.boundaries || "";
+  if (activeId !== "pAutoGrowth") $("pAutoGrowth").checked = p.autoGrowth !== false;
 
+  // Populate cloud presets once (both onboarding & Settings)
   if ($("presetChips").children.length === 0 && Array.isArray(s.presets)) {
     for (const pr of s.presets) {
       const chip = document.createElement("button");
@@ -635,6 +609,88 @@ function renderState(s) {
       };
       $("presetChips").appendChild(chip);
     }
+    for (const pr of s.presets.slice(0, 7)) {
+      const qChip = document.createElement("button");
+      qChip.type = "button";
+      qChip.className = "chip";
+      qChip.textContent = pr.name.split(" (")[0];
+      qChip.onclick = () => {
+        document.querySelectorAll("#quickPresetChips .chip").forEach((c) => c.classList.toggle("active", c === qChip));
+        $("quickUrl").value = pr.baseUrl || "";
+        $("quickModel").value = pr.defaultModel || "";
+        quickProto = pr.protocol || "auto";
+        quickRequiresKey = pr.requiresKey !== false;
+        if (pr.requiresKey === false) $("quickKey").value = "";
+      };
+      $("quickPresetChips").appendChild(qChip);
+    }
+  }
+
+  // Developer Inspector (collapsed by default)
+  $("padLabel").textContent = s.pad?.label || "-";
+  $("barP").style.width = `${Math.round((s.pad?.pleasure ?? 0.6) * 100)}%`;
+  $("barA").style.width = `${Math.round((s.pad?.arousal ?? 0.5) * 100)}%`;
+  $("barD").style.width = `${Math.round((s.pad?.dominance ?? 0.55) * 100)}%`;
+  $("valP").textContent = String(Math.round((s.pad?.pleasure ?? 0.6) * 100));
+  $("valA").textContent = String(Math.round((s.pad?.arousal ?? 0.5) * 100));
+  $("valD").textContent = String(Math.round((s.pad?.dominance ?? 0.55) * 100));
+  $("padToneHint").textContent = s.pad?.toneHint || "";
+  $("declutterBadge").textContent = `${s.declutter?.statusLabel || "健康"} · 卸载${s.declutter?.retiredCount || 0}`;
+
+  const act = s.activeTriples || [];
+  const hist = s.historicalTriples || [];
+  $("triplesCount").textContent = `${act.length} 活跃 / ${hist.length} 历史`;
+  const tl = $("triplesList");
+  tl.textContent = "";
+  for (const t of act.slice(-8).reverse()) {
+    const d = document.createElement("div");
+    d.className = "fact-item";
+    d.textContent = `${t.subject}${Number(t.polarity) < 0 ? "不" : ""}${t.predicate}「${t.object}」`;
+    tl.appendChild(d);
+  }
+  for (const h of hist.slice(-3).reverse()) {
+    const d = document.createElement("div");
+    d.className = "fact-item hist";
+    d.textContent = `${h.subject}${Number(h.polarity) < 0 ? "不" : ""}${h.predicate}「${h.object}」`;
+    tl.appendChild(d);
+  }
+
+  const loops = s.activeOpenLoops || [];
+  $("loopsCount").textContent = String(loops.length);
+  const ll = $("loopsList");
+  ll.textContent = "";
+  for (const l of loops) {
+    const row = document.createElement("div");
+    row.className = "fact-item";
+    const sp = document.createElement("span");
+    sp.textContent = `[${l.fromDate || "近期"}] ${l.text}`;
+    const btn = document.createElement("button");
+    btn.className = "ghost sm";
+    btn.textContent = "✓";
+    btn.onclick = async () => {
+      await api("/api/open-loops/resolve", { method: "POST", body: JSON.stringify({ key: l.key }) });
+      await refreshState(false);
+    };
+    row.append(sp, btn);
+    ll.appendChild(row);
+  }
+
+  const curBox = $("curiosityChips");
+  curBox.textContent = "";
+  for (const c of (s.growthDesk?.curiosities || []).slice(0, 4)) {
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = `✦ ${String(c.topic || "")}`;
+    curBox.appendChild(pill);
+  }
+
+  const dl = $("diaryList");
+  dl.textContent = "";
+  for (const d of (s.diaries || []).slice(0, 4)) {
+    const el = document.createElement("div");
+    el.className = "fact-item";
+    el.textContent = `[${d.dateKey || ""}] ${String(d.diaryEntry || "").slice(0, 80)}`;
+    dl.appendChild(el);
   }
 }
 
@@ -643,23 +699,23 @@ async function previewUrl() {
     method: "POST",
     body: JSON.stringify({ baseUrl: $("cfgUrl").value, protocol: $("cfgProto").value, model: $("cfgModel").value }),
   });
-  $("cfgPreview").textContent = r.chatEndpoint ? `自动识别: ${r.protocol} -> ${r.chatEndpoint}` : "";
+  $("cfgPreview").textContent = r.chatEndpoint ? `自动识别: ${r.protocol} → ${r.chatEndpoint}` : "";
 }
 $("cfgUrl").addEventListener("input", previewUrl);
 $("cfgProto").addEventListener("change", previewUrl);
 
 async function refreshState(renderHistory = false) {
   const s = await api("/api/state");
+  if (!s.ok) return;
   renderState(s);
   if (renderHistory) {
-    $("messages").innerHTML = "";
-    if (!s.recentTurns || s.recentTurns.length === 0) {
-      appendBubble("ambient", `欢迎来到 SoulCard 独立陪伴工作室！无需显卡、纯云端开箱即聊（支持 Claude / GPT / Gemini / Grok / DeepSeek 与任意中转站），右侧可随时铸造跨模型可携带的「未来伴侣记忆卡」。直接发句话试试看！`);
-    } else {
-      for (const t of s.recentTurns) {
-        appendBubble("user", t.userText);
-        appendBubble("assistant", t.text, `${t.model || ""}`);
-      }
+    const box = $("messages");
+    const onboard = $("onboardingCard");
+    box.textContent = "";
+    box.appendChild(onboard);
+    for (const t of (s.recentTurns || [])) {
+      appendBubble("user", t.userText);
+      appendBubble("assistant", t.text, { telemetry: t.model || "" });
     }
   }
 }
@@ -671,26 +727,30 @@ async function sendMessage() {
   const text = $("chatInput").value.trim();
   if (!text) return;
   $("chatInput").value = "";
+  $("onboardingCard").classList.add("hidden");
   appendBubble("user", text);
   sending = true;
   $("sendBtn").disabled = true;
-  $("typingIndicator").textContent = `${currentState?.persona?.name || "小汐"} 正在看消息并思考...`;
+  $("typingIndicator").textContent = `${currentState?.persona?.name || "小汐"} 正在输入...`;
   try {
     const res = await api("/api/chat", { method: "POST", body: JSON.stringify({ message: text }) });
     if (!res.ok) {
-      appendBubble("ambient", `发送失败：${res.error || "请检查中转站配置"}`);
+      appendBubble("ambient", `连接模型失败：${res.error || "请点右上角「设置」检查 API Key"}`);
       return;
     }
     const bubbles = res.pacing?.bubbles || [{ text: res.reply, delayMs: 0 }];
     for (let i = 0; i < bubbles.length; i += 1) {
       if (i > 0 && bubbles[i].delayMs > 0) {
-        $("typingIndicator").textContent = `${currentState?.persona?.name || "小汐"} 正在输入下一句...`;
-        await sleep(Math.min(1800, bubbles[i].delayMs));
+        await sleep(Math.min(1600, bubbles[i].delayMs));
       }
-      const meta = i === bubbles.length - 1
-        ? `${res.model} · ${res.latencyMs}ms · ${bubbles.length}泡 · 记忆卡${res.recalledCards?.length || 0}张 · 事实${res.recalledFacts?.length || 0}条${res.resolvedOpenLoops?.length ? ` · 消号${res.resolvedOpenLoops.length}条` : ""}`
+      const isLast = i === bubbles.length - 1;
+      const whisper = isLast && res.autoCard
+        ? `✦ 已悄悄记住「${res.autoCard.title}」· 点此查看记忆卡`
         : "";
-      appendBubble("assistant", bubbles[i].text, meta);
+      const telemetry = isLast
+        ? `${res.model} · ${res.latencyMs}ms · 记忆卡${res.recalledCards?.length || 0} · 事实${res.recalledFacts?.length || 0}`
+        : "";
+      appendBubble("assistant", bubbles[i].text, { whisper, telemetry });
     }
     await refreshState(false);
   } finally {
@@ -703,29 +763,40 @@ async function sendMessage() {
 
 $("sendBtn").onclick = sendMessage;
 $("chatInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-$("ambientBtn").onclick = async () => {
-  const r = await api("/api/ambient?force=1");
-  if (r.shouldCheckIn && r.message) {
-    appendBubble("ambient", `[主动轻敲 · ${r.kind}] ${r.message}`);
-  }
+// First-Run Quick Connect
+$("quickStartBtn").onclick = async () => {
+  const url = $("quickUrl").value.trim();
+  const key = $("quickKey").value.trim();
+  const model = $("quickModel").value.trim();
+  if (!url) return showStatus("quickStatus", "请先点选上方任意云端模型或填入中转站网址", "err");
+  showStatus("quickStatus", "正在测试连通并保存...");
+  const r = await api("/api/config", {
+    method: "POST",
+    body: JSON.stringify({ baseUrl: url, apiKey: key, clearKey: quickRequiresKey === false && !key, model, protocol: quickProto }),
+  });
+  if (!r.ok) return showStatus("quickStatus", `配置失败：${r.error}`, "err");
+  if (!r.testResult?.ok) return showStatus("quickStatus", `已保存，但连通测试未通过：${r.testResult?.error || "请检查 Key 或模型名"}`, "err");
+  $("quickKey").value = "";
+  showStatus("quickStatus", `✔ 已连通 ${r.config.model}（${r.testResult.latencyMs}ms）！`, "ok");
+  await refreshState(false);
+  $("onboardingCard").classList.add("hidden");
+  appendBubble("ambient", `已连通 ${r.config.model}，直接发句话开始聊天吧！`);
+  $("chatInput").focus();
 };
 
+// Settings Config Actions
 $("fetchModelsBtn").onclick = async () => {
-  $("cfgStatus").className = "status-box";
-  $("cfgStatus").textContent = "正在向中转站拉取 /v1/models 可用模型列表...";
+  showStatus("cfgStatus", "正在拉取可用模型列表...");
   const r = await api("/api/config/models", {
     method: "POST",
     body: JSON.stringify({ baseUrl: $("cfgUrl").value, apiKey: $("cfgKey").value, protocol: $("cfgProto").value }),
   });
   if (r.ok && r.models.length > 0) {
     const sel = $("discoveredModels");
-    sel.innerHTML = "";
+    sel.textContent = "";
     for (const m of r.models.slice(0, 60)) {
       const opt = document.createElement("option");
       opt.value = m;
@@ -733,19 +804,16 @@ $("fetchModelsBtn").onclick = async () => {
       sel.appendChild(opt);
     }
     sel.onchange = () => { $("cfgModel").value = sel.value; };
-    $("modelPickerRow").style.display = "block";
+    $("modelPickerRow").classList.remove("hidden");
     if (!$("cfgModel").value) $("cfgModel").value = r.models[0];
-    $("cfgStatus").className = "status-box ok";
-    $("cfgStatus").textContent = `✔ 拉取成功，共 ${r.models.length} 个可用模型，可在下拉框直接选择。`;
+    showStatus("cfgStatus", `✔ 拉取成功（${r.models.length} 个模型）`, "ok");
   } else {
-    $("cfgStatus").className = "status-box";
-    $("cfgStatus").textContent = "该中转站未开放模型列表接口，直接手动填写模型名即可。";
+    showStatus("cfgStatus", "该接口未开放模型列表，直接手填模型名即可。");
   }
 };
 
 $("saveConfigBtn").onclick = async () => {
-  $("cfgStatus").className = "status-box";
-  $("cfgStatus").textContent = "正在测试 5-token 连通性并写入 .env ...";
+  showStatus("cfgStatus", "正在测试连通并写入 .env ...");
   const r = await api("/api/config", {
     method: "POST",
     body: JSON.stringify({
@@ -756,23 +824,16 @@ $("saveConfigBtn").onclick = async () => {
       protocol: $("cfgProto").value,
     }),
   });
-  if (!r.ok) {
-    $("cfgStatus").className = "status-box err";
-    $("cfgStatus").textContent = `✖ 保存失败: ${r.error}`;
-    return;
-  }
+  if (!r.ok) return showStatus("cfgStatus", `✖ 保存失败：${r.error}`, "err");
   $("cfgKey").value = "";
   $("cfgKey").dataset.clearKey = "0";
   const okPing = r.testResult?.ok;
-  $("cfgStatus").className = "status-box " + (okPing ? "ok" : "err");
-  $("cfgStatus").textContent = okPing
-    ? `✔ 连通成功 (${r.testResult.latencyMs}ms)！已生效并写入 .env\n接口: ${r.config.chatEndpoint}\n模型: ${r.config.model} | 回复: "${r.testResult.content}"`
-    : `⚠ 配置已写入 .env，但连通测试未通过：\n${r.testResult?.error || "未知错误"}`;
+  showStatus("cfgStatus", okPing ? `✔ 连通成功 (${r.testResult.latencyMs}ms) · ${r.config.model}` : `⚠ 已保存，但连通未通过：${r.testResult?.error || "未知错误"}`, okPing ? "ok" : "err");
   await refreshState(false);
 };
 
 $("savePersonaBtn").onclick = async () => {
-  await api("/api/persona", {
+  const r = await api("/api/persona", {
     method: "POST",
     body: JSON.stringify({
       name: $("pName").value,
@@ -780,19 +841,15 @@ $("savePersonaBtn").onclick = async () => {
       pacingMode: $("pPacing").value,
       voiceStyle: $("pVoice").value,
       boundaries: $("pBoundaries").value,
+      autoGrowth: $("pAutoGrowth").checked,
     }),
   });
+  if (!r.ok) return showStatus("personaStatus", `✖ 保存失败：${r.error || "未知错误"}`, "err");
   await refreshState(false);
-  appendBubble("ambient", "✔ 人设与节奏模式已更新生效。");
+  showStatus("personaStatus", "✔ 伴侣设定已保存生效", "ok");
 };
 
-$("resetMemBtn").onclick = async () => {
-  if (!confirm("确定清空近期对话与图谱记忆吗？（默认保留你珍藏的记忆卡、人设与 .env 配置）")) return;
-  await api("/api/memory/reset", { method: "POST", body: JSON.stringify({ keepPersona: true, keepCards: true }) });
-  await refreshState(true);
-};
-
-// --- Portable Future-Companion Memory Card Actions ---
+// Memory Cards Drawer Actions
 $("cardSearch").addEventListener("input", () => renderCardsWall(currentState?.memoryCards || []));
 document.querySelectorAll("#cardFilterChips .chip").forEach((chip) => {
   chip.addEventListener("click", () => {
@@ -803,44 +860,31 @@ document.querySelectorAll("#cardFilterChips .chip").forEach((chip) => {
 });
 
 $("addCardBtn").onclick = async () => {
-  const title = $("cardTitle").value.trim();
   const content = $("cardContent").value.trim();
-  const category = $("cardCategory").value;
-  const pinned = $("cardPinned").checked || category === "pinned";
-  if (!content) {
-    $("cardsStatus").className = "status-box err";
-    $("cardsStatus").textContent = "请先写下想存进记忆卡的内容。";
-    return;
-  }
+  if (!content) return showStatus("cardsStatus", "请先写下记忆卡内容。", "err");
   const r = await api("/api/cards", {
     method: "POST",
-    body: JSON.stringify({ title, content, category, pinned }),
+    body: JSON.stringify({
+      title: $("cardTitle").value.trim(),
+      content,
+      category: $("cardCategory").value,
+      pinned: $("cardPinned").checked || $("cardCategory").value === "pinned",
+    }),
   });
-  if (!r.ok) {
-    $("cardsStatus").className = "status-box err";
-    $("cardsStatus").textContent = `✖ 保存失败：${r.error}`;
-    return;
-  }
+  if (!r.ok) return showStatus("cardsStatus", `✖ ${r.error}`, "err");
   $("cardTitle").value = "";
   $("cardContent").value = "";
   $("cardPinned").checked = false;
-  $("cardsStatus").className = "status-box ok";
-  $("cardsStatus").textContent = r.duplicate ? "这张记忆卡已经存在啦，已为你保留。" : `✔ 已存入记忆卡「${r.card.title}」，现在聊天 TA 就会立刻记得！`;
+  $("newCardForm").classList.add("hidden");
+  showStatus("cardsStatus", r.duplicate ? "这张记忆卡已存在。" : `✔ 已存入「${r.card.title}」，现在聊天立刻生效！`, "ok");
   await refreshState(false);
 };
 
 $("mintCardsBtn").onclick = async () => {
-  $("cardsStatus").className = "status-box";
-  $("cardsStatus").textContent = "正在请当前云端模型从近期对话里提炼值得珍藏的记忆卡...";
+  showStatus("cardsStatus", "正在从最近聊天提炼记忆卡...");
   const r = await api("/api/cards/mint", { method: "POST", body: JSON.stringify({ maxTurns: 12 }) });
-  $("cardsStatus").className = "status-box " + (r.ok ? "ok" : "err");
-  if (!r.ok) {
-    $("cardsStatus").textContent = `✖ 提炼失败：${r.error || "请先配置云端模型并聊几句"}`;
-    return;
-  }
-  $("cardsStatus").textContent = r.added > 0
-    ? `✔ 成功铸造 ${r.added} 张新记忆卡（当前共 ${r.total} 张）！`
-    : `已完成检查：近期对话暂无新增需要入卡的长期记忆（共 ${r.total} 张）。`;
+  if (!r.ok) return showStatus("cardsStatus", `✖ ${r.error || "提炼失败"}`, "err");
+  showStatus("cardsStatus", r.added > 0 ? `✔ 自动提炼了 ${r.added} 张新记忆卡！` : "近期聊天暂无新的长期记忆需要入卡。", "ok");
   await refreshState(false);
 };
 
@@ -856,28 +900,16 @@ function downloadTextFile(filename, content, mime) {
 
 $("exportCardsJsonBtn").onclick = async () => {
   const r = await api("/api/cards/export");
-  if (!r.ok) {
-    $("cardsStatus").className = "status-box err";
-    $("cardsStatus").textContent = `✖ 导出失败：${r.error || "未知错误"}`;
-    return;
-  }
-  const dateStr = new Date().toISOString().slice(0, 10);
-  downloadTextFile(`soulcard-memory-${dateStr}.json`, JSON.stringify(r.pack, null, 2), "application/json");
-  $("cardsStatus").className = "status-box ok";
-  $("cardsStatus").textContent = `✔ 已导出可携带「未来伴侣记忆卡包」JSON（${r.pack.stats.cardCount} 张记忆卡 · ${r.pack.stats.factCount} 条事实），换任何云端模型或电脑均可插卡还原！`;
+  if (!r.ok) return showStatus("cardsStatus", `✖ 导出失败：${r.error || "未知错误"}`, "err");
+  downloadTextFile(`soulcard-memory-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(r.pack, null, 2), "application/json");
+  showStatus("cardsStatus", `✔ 已导出完整存卡包（${r.pack.stats.cardCount} 张卡 · ${r.pack.stats.factCount} 条事实 · ${r.pack.stats.diaryCount} 篇日记）`, "ok");
 };
 
 $("exportCardsMdBtn").onclick = async () => {
   const r = await api("/api/cards/export");
-  if (!r.ok) {
-    $("cardsStatus").className = "status-box err";
-    $("cardsStatus").textContent = `✖ 导出失败：${r.error || "未知错误"}`;
-    return;
-  }
-  const dateStr = new Date().toISOString().slice(0, 10);
-  downloadTextFile(`soulcard-book-${dateStr}.md`, r.markdown, "text/markdown; charset=utf-8");
-  $("cardsStatus").className = "status-box ok";
-  $("cardsStatus").textContent = `✔ 已导出人类可读《未来伴侣记忆卡册》Markdown（${r.pack.stats.cardCount} 张卡），双击即可阅读收藏！`;
+  if (!r.ok) return showStatus("cardsStatus", `✖ 导出失败：${r.error || "未知错误"}`, "err");
+  downloadTextFile(`soulcard-book-${new Date().toISOString().slice(0, 10)}.md`, r.markdown, "text/markdown; charset=utf-8");
+  showStatus("cardsStatus", `✔ 已导出可读《未来伴侣记忆卡册》Markdown`, "ok");
 };
 
 $("importCardsBtn").onclick = () => $("importCardsFile").click();
@@ -885,108 +917,48 @@ $("importCardsFile").onchange = async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    const text = await file.text();
-    const pack = JSON.parse(text);
-    const restorePersona = confirm("导入记忆卡时，是否同时恢复卡包里保存的伴侣人设？（点「取消」则只无损合并记忆卡与事实）");
-    const r = await api("/api/cards/import", {
-      method: "POST",
-      body: JSON.stringify({ pack, mode: "merge", restorePersona }),
-    });
-    $("cardsStatus").className = "status-box " + (r.ok ? "ok" : "err");
-    $("cardsStatus").textContent = r.ok
-      ? `✔ 插卡导入成功！新增 ${r.addedCards} 张卡（跳过重复 ${r.skippedCards} 张，导入事实 ${r.factsImported} 条，当前共 ${r.totalCards} 张）`
-      : `✖ 导入失败：${r.error}`;
+    const pack = JSON.parse(await file.text());
+    const restorePersona = confirm("导入存卡时，是否同时恢复卡包里保存的伴侣人设？（点「取消」仅无损合并记忆）");
+    const r = await api("/api/cards/import", { method: "POST", body: JSON.stringify({ pack, mode: "merge", restorePersona }) });
+    showStatus("cardsStatus", r.ok ? `✔ 插卡恢复成功！新增 ${r.addedCards} 张卡（兼容 ${r.importedFormat || "pack"}）` : `✖ 导入失败：${r.error}`, r.ok ? "ok" : "err");
     await refreshState(false);
   } catch (err) {
-    $("cardsStatus").className = "status-box err";
-    $("cardsStatus").textContent = `✖ 所选文件不是合法的记忆卡 JSON：${err?.message || err}`;
+    showStatus("cardsStatus", `✖ 文件不是合法 JSON：${err?.message || err}`, "err");
   } finally {
     e.target.value = "";
   }
 };
 
-async function runGrowthAction(endpoint, label) {
-  $("growthStatus").className = "status-box";
-  $("growthStatus").textContent = `正在执行${label}...`;
-  const r = await api(endpoint, { method: "POST", body: JSON.stringify({ force: true }) });
-  $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
-  $("growthStatus").textContent = r.skipped
-    ? `跳过（${r.reason}）：请先聊几轮积累素材后再整理。`
-    : (r.ok ? `✔ ${label}完成！${r.record?.diaryEntry || r.record?.milestone || r.record?.narrative || ""}` : `✖ 执行失败：${r.error || "未知错误"}`);
+// Developer Inspector Manual Triggers
+async function runDevAction(endpoint, label, payload = { force: true }) {
+  showStatus("devStatus", `正在执行${label}...`);
+  const r = await api(endpoint, { method: "POST", body: JSON.stringify(payload) });
+  showStatus("devStatus", r.skipped ? `跳过（${r.reason || r.error}）` : (r.ok ? `✔ ${label}完成` : `✖ ${r.error || "失败"}`), r.ok ? "ok" : "err");
   await refreshState(false);
 }
-$("runDailyBtn").onclick = () => runGrowthAction("/api/consolidate/daily", "睡前日记整理");
-$("runWeeklyBtn").onclick = () => runGrowthAction("/api/consolidate/weekly", "周度成长复盘");
-$("runMonthlyBtn").onclick = () => runGrowthAction("/api/consolidate/monthly", "L3 月度自传");
-
+$("runDailyBtn").onclick = () => runDevAction("/api/consolidate/daily", "睡前日记");
+$("runWeeklyBtn").onclick = () => runDevAction("/api/consolidate/weekly", "周度成长");
+$("runMonthlyBtn").onclick = () => runDevAction("/api/consolidate/monthly", "月度自传");
+$("socialReflectBtn").onclick = () => runDevAction("/api/growth/social-reflect", "社交复盘", {});
 $("studyLearnBtn").onclick = async () => {
-  const title = $("studyTitle").value.trim();
   const content = $("studyContent").value.trim();
-  if (!content) {
-    $("studyStatus").className = "status-box err";
-    $("studyStatus").textContent = "请先粘贴要分享给 TA 体验学习的内容。";
-    return;
-  }
-  $("studyStatus").className = "status-box";
-  $("studyStatus").textContent = "TA 正在认真读你分享的内容并写第一人称感想...";
-  const r = await api("/api/growth/learn", { method: "POST", body: JSON.stringify({ title, content }) });
-  $("studyStatus").className = "status-box " + (r.ok ? "ok" : "err");
-  if (!r.ok) {
-    $("studyStatus").textContent = `✖ 学习失败：${r.error || "请检查云端模型配置"}`;
-    return;
-  }
+  if (!content) return showStatus("devStatus", "请先粘贴分享学习的内容。", "err");
+  await runDevAction("/api/growth/learn", "体验学习", { title: $("studyTitle").value.trim(), content });
   $("studyTitle").value = "";
   $("studyContent").value = "";
-  $("studyStatus").textContent = `✔ 已写下体验随笔《${r.note.title}》：${r.note.reaction}`;
-  await refreshState(false);
 };
-
-$("socialReflectBtn").onclick = async () => {
-  $("studyStatus").className = "status-box";
-  $("studyStatus").textContent = "正在做轻量社交体感复盘与旧规矩卸载...";
-  const r = await api("/api/growth/social-reflect", { method: "POST", body: JSON.stringify({}) });
-  $("studyStatus").className = "status-box " + (r.ok ? "ok" : "err");
-  $("studyStatus").textContent = r.skipped
-    ? `跳过：${r.error || "先聊满 2 轮再来复盘吧"}`
-    : (r.ok ? `✔ 社交体感复盘完成！${r.summary || ""}${r.retiredCount ? `（淘汰 ${r.retiredCount} 条过时规矩）` : ""}` : `✖ 复盘失败：${r.error || "未知错误"}`);
-  await refreshState(false);
-};
-
-$("exportSoulBtn").onclick = async () => {
-  const r = await api("/api/soul/export");
-  if (!r.ok) {
-    $("growthStatus").className = "status-box err";
-    $("growthStatus").textContent = `✖ 导出失败：${r.error || "未知错误"}`;
-    return;
+$("ambientBtn").onclick = async () => {
+  const r = await api("/api/ambient?force=1");
+  if (r.shouldCheckIn && r.message) {
+    closeDrawers();
+    appendBubble("ambient", r.message);
   }
-  const blob = new Blob([JSON.stringify(r.payload, null, 2)], { type: "application/json" });
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = blobUrl;
-  a.download = `soulcard-ledger-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-  $("growthStatus").className = "status-box ok";
-  $("growthStatus").textContent = `✔ 已导出灵魂账本 v1（${JSON.stringify(r.stats)}）`;
 };
-
-$("importSoulBtn").onclick = () => $("importSoulFile").click();
-$("importSoulFile").onchange = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const payload = JSON.parse(text);
-    const r = await api("/api/soul/import", { method: "POST", body: JSON.stringify({ payload, mode: "merge" }) });
-    $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
-    $("growthStatus").textContent = r.ok ? `✔ 灵魂账本无损合并还原成功：${JSON.stringify(r.totals)}` : `✖ 导入失败：${r.error}`;
-    await refreshState(false);
-  } catch (err) {
-    $("growthStatus").className = "status-box err";
-    $("growthStatus").textContent = `✖ 所选文件不是合法的灵魂账本 JSON：${err?.message || err}`;
-  } finally {
-    e.target.value = "";
-  }
+$("resetMemBtn").onclick = async () => {
+  if (!confirm("确定清空近期对话与图谱？（保留你珍藏的记忆卡与设置）")) return;
+  await api("/api/memory/reset", { method: "POST", body: JSON.stringify({ keepPersona: true, keepCards: true }) });
+  closeDrawers();
+  await refreshState(true);
 };
 
 refreshState(true).then(previewUrl);

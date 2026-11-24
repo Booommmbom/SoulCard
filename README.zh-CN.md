@@ -82,14 +82,14 @@ git clone https://github.com/Booommmbom/soulcard.git
 cd soulcard
 
 # 方式 A（最推荐 · 一键启动并自动打开浏览器）：
-# 在页面右上角选 Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站，贴入 Key 10 秒开聊！
-# 右侧直接管理「未来伴侣记忆卡」、实时观察 3D PAD 情绪、双时态图谱与成长日记！
+# 在首次引导卡或右上角「设置」选 Claude / GPT / Gemini / Grok / DeepSeek / 任意中转站，贴入 Key 10 秒开聊！
+# 极简沉浸主界面（仅留 3 个入口），后台静默自动记卡与节流沉淀；记忆卡在抽屉管理，开发者透视默认折叠！
 npm start
 
 # 方式 B：一秒离线跑通全部认知支柱演示（无需 Key）
 npm run demo
 
-# 方式 C：终端实聊 / 跑全量 11 大套单测与安全回归 / 零泄密安全审计
+# 方式 C：终端实聊 / 跑全量 13 大套单测与安全回归 / 零泄密安全审计
 npm run chat
 npm test
 npm run audit:secrets

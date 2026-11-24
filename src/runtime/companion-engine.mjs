@@ -98,6 +98,7 @@ export class CompanionEngine {
     this.fetchFn = fetchFn;
     this.llmOverrides = llmOverrides || {};
     this._writeQueue = Promise.resolve();
+    this._bgGrowthInFlight = false;
     this.stateDir = join(this.dataDir, "state");
     this.diaryDir = join(this.dataDir, "diary");
     mkdirSync(this.stateDir, { recursive: true });
@@ -133,6 +134,7 @@ export class CompanionEngine {
       openLoopsState: join(this.stateDir, "open-loops-state.json"),
       ambientState: join(this.stateDir, "ambient-state.json"),
       sessionSummary: join(this.stateDir, "session-summary.json"),
+      autoGrowthState: join(this.stateDir, "auto-growth-state.json"),
     };
   }
 
@@ -303,6 +305,28 @@ export class CompanionEngine {
   }
 
   importMemoryCardPack(rawPack, { mode = "merge", restorePersona = false, now = Date.now() } = {}) {
+    // Unified smart import: transparently accepts legacy Soul Ledger JSON (`soulcard.ledger.v1`) too!
+    if (rawPack && typeof rawPack === "object" && (rawPack.schemaVersion === "soulcard.ledger.v1" || (!Array.isArray(rawPack.cards) && Array.isArray(rawPack.diaries)))) {
+      const tmpLedger = join(this.stateDir, `.ledger-imp-${Date.now()}.json`);
+      try {
+        writeFileSync(tmpLedger, JSON.stringify(rawPack, null, 2), "utf8");
+        const lr = this.importSoul(tmpLedger, { mode: mode === "replace" ? "replace" : "merge", now });
+        return {
+          ok: Boolean(lr.ok),
+          error: lr.error,
+          importedFormat: "soul-ledger",
+          addedCards: 0,
+          skippedCards: 0,
+          totalCards: this._readMemoryCards().length,
+          factsImported: 0,
+          ledgerTotals: lr.totals || null,
+          personaRestored: false,
+        };
+      } finally {
+        try { if (existsSync(tmpLedger)) rmSync(tmpLedger, { force: true }); } catch {}
+      }
+    }
+
     const check = validateMemoryCardPack(rawPack);
     if (!check.ok) return { ok: false, error: check.error };
     const existing = this._readMemoryCards();
@@ -331,6 +355,26 @@ export class CompanionEngine {
       }
     }
 
+    // Also restore highlights (diaries/milestones/chapters) when present so 1 card pack carries the whole soul!
+    let ledgerTotals = null;
+    const hl = rawPack.highlights;
+    if (hl && (Array.isArray(hl.diaries) && hl.diaries.length > 0 || Array.isArray(hl.milestones) && hl.milestones.length > 0 || Array.isArray(hl.chapters) && hl.chapters.length > 0)) {
+      const tmpHl = join(this.stateDir, `.hl-imp-${Date.now()}.json`);
+      try {
+        writeFileSync(tmpHl, JSON.stringify({
+          schemaVersion: "soulcard.ledger.v1",
+          diaries: Array.isArray(hl.diaries) ? hl.diaries : [],
+          milestones: Array.isArray(hl.milestones) ? hl.milestones : [],
+          monthlyChapters: Array.isArray(hl.chapters) ? hl.chapters : (Array.isArray(hl.monthlyChapters) ? hl.monthlyChapters : []),
+          retiredHabits: [],
+        }, null, 2), "utf8");
+        const lr = this.importSoul(tmpHl, { mode: mode === "replace" ? "replace" : "merge", now });
+        if (lr.ok) ledgerTotals = lr.totals || null;
+      } catch {} finally {
+        try { if (existsSync(tmpHl)) rmSync(tmpHl, { force: true }); } catch {}
+      }
+    }
+
     let personaRestored = false;
     if (restorePersona && rawPack.persona && typeof rawPack.persona === "object") {
       this.savePersona(rawPack.persona);
@@ -339,11 +383,13 @@ export class CompanionEngine {
 
     return {
       ok: true,
+      importedFormat: "memory-card-pack",
       mode: mode === "replace" ? "replace" : "merge",
       addedCards: merged.added,
       skippedCards: merged.skipped,
       totalCards: merged.cards.length,
       factsImported,
+      ledgerTotals,
       personaRestored,
     };
   }
@@ -495,6 +541,7 @@ export class CompanionEngine {
 
     // 2. Capture durable user fact/preference into transparent L2 memory-events log (deduplicating identical recent repeats)
     let capturedMemory = false;
+    let autoCard = null;
     const lastMemText = memoryEvents.length > 0 ? String(memoryEvents[memoryEvents.length - 1]?.text || "") : "";
     if (shouldCaptureMemoryEvent(cleanUser) && cleanUser !== lastMemText) {
       const nextId = memoryEvents.length + 1;
@@ -502,6 +549,25 @@ export class CompanionEngine {
       appendJsonl(this.paths.memoryEvents, ev);
       memoryEvents.push(ev);
       capturedMemory = true;
+
+      // Zero-cost ($0 extra LLM call!) silent Memory Card capture when user explicitly asks to remember or states clear promise/allergy
+      const explicitRemember = /(?:帮我记住|记住我|别忘了|记一下|记下来|以后记得|我不吃|我过敏|说好了|约定好)/.test(cleanUser);
+      const isQuestionOnly = /(?:你记得|还记得|忘了).{0,20}吗[？?]?$/.test(cleanUser);
+      if (persona.autoGrowth !== false && explicitRemember && !isQuestionOnly && !isSensitiveCardText(cleanUser)) {
+        const cat = /(?:说好了|约定好|别忘了)/.test(cleanUser) ? "promise" : "preference";
+        const added = this.addMemoryCard({
+          title: cleanUser.replace(/^(?:帮我记住|记住我|别忘了|记一下|记下来|以后记得)[，,：:\s]*/u, "").slice(0, 18) || "对话记住的事",
+          content: cleanUser,
+          category: cat,
+          pinned: /(?:帮我记住|记住我|我不吃|我过敏)/.test(cleanUser),
+          quote: cleanUser,
+          source: "auto_chat",
+        }, now);
+        if (added.ok && !added.duplicate) {
+          autoCard = { id: added.card.id, title: added.card.title, pinned: added.card.pinned };
+          memoryCards.unshift(added.card);
+        }
+      }
     }
 
     // 3. Assemble complete model-agnostic cognitive prompt (injecting pinned & relevant Memory Cards!)
@@ -592,9 +658,46 @@ export class CompanionEngine {
       },
       recalledFacts: assembled.graph.recalled.slice(0, 5),
       recalledCards: (assembled.recalledCards || []).map((c) => ({ id: c.id, title: c.title, pinned: c.pinned })),
+      autoCard,
       resolvedOpenLoops: loopRes.resolved,
       capturedMemory,
     };
+  }
+
+  /**
+   * Cost-guarded silent background growth check (NEVER burns extra cloud tokens per turn!).
+   * Triggers at most once every 6 hours AND only when >= 8 real raw messages accumulated today
+   * AND persona.autoGrowth !== false. Always fire-and-forget safe.
+   */
+  maybeScheduleBackgroundGrowth({ now = Date.now(), minMessages = 8, cooldownMs = 6 * 3600 * 1000 } = {}) {
+    if (this._bgGrowthInFlight) return { scheduled: false, reason: "already_running" };
+    const persona = this.getPersona();
+    if (persona.autoGrowth === false) return { scheduled: false, reason: "disabled_by_user" };
+    const cfg = this.getLlmConfig();
+    if (!cfg.baseUrl || (!cfg.apiKey && cfg.protocol !== "ollama" && cfg.source !== "local-gateway")) {
+      return { scheduled: false, reason: "llm_unconfigured" };
+    }
+    const ag = readJsonSafe(this.paths.autoGrowthState, { lastRunAt: 0, lastDateKey: "" });
+    if (ag.lastRunAt && now - Number(ag.lastRunAt) < cooldownMs) {
+      return { scheduled: false, reason: "cooldown_active" };
+    }
+    const d = new Date(now);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const rawMsgs = readJsonlSafe(this.paths.rawMessages);
+    const todayMsgs = rawMsgs.filter((m) => {
+      const md = new Date(Number(m.ts || 0));
+      const mk = `${md.getFullYear()}-${String(md.getMonth() + 1).padStart(2, "0")}-${String(md.getDate()).padStart(2, "0")}`;
+      return mk === dateKey;
+    });
+    if (todayMsgs.length < minMessages) {
+      return { scheduled: false, reason: "below_message_threshold", todayMessages: todayMsgs.length };
+    }
+    writeJsonAtomic(this.paths.autoGrowthState, { lastRunAt: now, lastDateKey: dateKey });
+    this._bgGrowthInFlight = true;
+    const promise = this.consolidateDaily({ dateKey, force: false, minMessages })
+      .catch(() => ({ ok: false }))
+      .finally(() => { this._bgGrowthInFlight = false; });
+    return { scheduled: true, dateKey, todayMessages: todayMsgs.length, promise };
   }
 
   /**
@@ -849,6 +952,7 @@ export class CompanionEngine {
       this.paths.retiredHabits,
       this.paths.openLoopsState,
       this.paths.ambientState,
+      this.paths.autoGrowthState,
       this.paths.sessionSummary,
     ];
     for (const f of filesToRemove) {

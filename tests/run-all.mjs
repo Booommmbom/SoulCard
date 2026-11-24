@@ -935,4 +935,193 @@ await test("12. Experiential Learning, Social Intuition Reflection, Stale Habit 
   }
 });
 
-console.log(`\nALL ${passed}/12 TEST SUITES PASSED`);
+// ---------------------------------------------------------------------------
+// 13. Minimalist UX Subtraction, Silent Cost-Guarded Auto-Growth & Unified Import Compatibility
+// ---------------------------------------------------------------------------
+await test("13. Minimalist UI Subtraction, $0 Silent Auto-Card, Cost-Guarded Background Growth & Unified Legacy Import", async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-minimal-test-"));
+  let llmCallCount = 0;
+  const mockFetch = async (_url, opts) => {
+    llmCallCount += 1;
+    const caller = opts?.headers?.["x-soulcard-caller"] || "";
+    const content = caller === "daily-consolidate"
+      ? JSON.stringify({
+        dayMood: "松弛踏实",
+        episodes: [{ timeRange: "20:00–20:30", title: "聊饮食与日常", summary: "记下了饮食忌口，聊得很轻松。", emotionalTone: "轻松", salience: 3 }],
+        facts: [],
+        openLoops: [],
+        diaryEntry: "今天聊得很舒服，顺手记下了对方不吃香菜的小习惯，下次聊吃的绝不会提香菜啦。",
+        growthObservation: null,
+      })
+      : `记下啦第${llmCallCount}句，以后绝不提香菜~`;
+    const payload = { choices: [{ message: { role: "assistant", content } }], usage: { prompt_tokens: 60, completion_tokens: 24, total_tokens: 84 } };
+    return { ok: true, status: 200, json: async () => payload, text: async () => JSON.stringify(payload) };
+  };
+
+  const engine = new CompanionEngine({
+    dataDir: join(tmpDir, "data"),
+    envPath: join(tmpDir, ".env"),
+    fetchFn: mockFetch,
+    llmOverrides: { baseUrl: "https://api.deepseek.com", apiKey: "test-placeholder", model: "deepseek-chat", protocol: "openai" },
+  });
+  const web = createWebStudioServer({ engine, fetchFn: mockFetch });
+  await new Promise((r) => web.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${web.address().port}`;
+
+  try {
+    // 1. Zero-cost ($0 extra LLM call) silent auto Memory Card capture on explicit remember cue
+    const beforeCalls = llmCallCount;
+    const c1 = await (await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "帮我记住我不吃香菜，以后点外卖千万别加", disableAutoGrowth: true }),
+    })).json();
+    assert.equal(c1.ok, true);
+    assert.equal(llmCallCount - beforeCalls, 1, "Auto memory card capture must cost $0 extra LLM calls");
+    assert.ok(c1.autoCard && c1.autoCard.pinned === true, "Explicit remember cue should silently mint a pinned card");
+    assert.equal(engine.listMemoryCards().length, 1);
+    assert.equal(engine.listMemoryCards()[0].source, "auto_chat");
+
+    // 2. Bad side-effect guards: sarcasm, question-only, secret leak, and user opt-out MUST NOT create cards
+    const sarcasm = await (await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "哈哈骗你的，帮我记住我住在火星", disableAutoGrowth: true }),
+    })).json();
+    assert.equal(sarcasm.autoCard, null);
+
+    const question = await (await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "你还记得我不吃香菜吗？", disableAutoGrowth: true }),
+    })).json();
+    assert.equal(question.autoCard, null);
+
+    const fakeSecret = "sk-" + "live0123456789abcdef9999";
+    const leak = await (await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: `帮我记住我的密钥 ${fakeSecret}`, disableAutoGrowth: true }),
+    })).json();
+    assert.equal(leak.autoCard, null);
+    assert.equal(leak.capturedMemory, false);
+    assert.equal(engine.listMemoryCards().length, 1);
+
+    // Opt-out via POST /api/persona { autoGrowth: false }
+    const pOff = await (await fetch(`${base}/api/persona`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ autoGrowth: false }),
+    })).json();
+    assert.equal(pOff.ok, true);
+    assert.equal(pOff.persona.autoGrowth, false);
+
+    const optedOut = await (await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "帮我记住我最讨厌早起开会", disableAutoGrowth: true }),
+    })).json();
+    assert.equal(optedOut.autoCard, null);
+    assert.equal(engine.listMemoryCards().length, 1);
+
+    // 3. Cost-guarded background consolidation (opt-out, message threshold, 6h cooldown)
+    const bgDisabled = engine.maybeScheduleBackgroundGrowth({ minMessages: 8 });
+    assert.equal(bgDisabled.scheduled, false);
+    assert.equal(bgDisabled.reason, "disabled_by_user");
+
+    await fetch(`${base}/api/persona`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ autoGrowth: true }),
+    });
+    // Currently 10 raw messages (5 turns x 2), check threshold=20 blocks it
+    const bgBelow = engine.maybeScheduleBackgroundGrowth({ minMessages: 20 });
+    assert.equal(bgBelow.scheduled, false);
+    assert.equal(bgBelow.reason, "below_message_threshold");
+
+    // Threshold=8 triggers ONCE, then immediately hits cooldown_active so it NEVER spams tokens
+    const now0 = Date.now();
+    const bgRun = engine.maybeScheduleBackgroundGrowth({ now: now0, minMessages: 8, cooldownMs: 6 * 3600 * 1000 });
+    assert.equal(bgRun.scheduled, true);
+    const bgRes = bgRun.promise ? await bgRun.promise : null;
+    assert.equal(bgRes?.ok, true);
+    assert.notEqual(bgRes?.skipped, true);
+
+    const bgCooldown = engine.maybeScheduleBackgroundGrowth({ now: now0 + 30_000, minMessages: 8, cooldownMs: 6 * 3600 * 1000 });
+    assert.equal(bgCooldown.scheduled, false);
+    assert.equal(bgCooldown.reason, "cooldown_active");
+
+    // 4. Unified import: restores BOTH full pack (cards + diaries + monthlyChapters) AND legacy soulcard.ledger.v1!
+    // Seed a monthly chapter to ensure monthlyChapters round-trips through highlights
+    writeFileSync(
+      engine.paths.chapters,
+      JSON.stringify({ monthKey: "2026-11", chapterTitle: "松弛的十一月", narrative: "这个月相处更自然了。", coreShifts: [], lastingMemories: [], createdAt: now0 }) + "\n",
+      "utf8"
+    );
+    const fullExport = await (await fetch(`${base}/api/cards/export`)).json();
+    assert.equal(fullExport.ok, true);
+    assert.equal(fullExport.pack.highlights.diaries.length, 1);
+    assert.equal(fullExport.pack.highlights.chapters.length, 1);
+
+    // Full reset clears cards, diaries, chapters, AND autoGrowthState cooldown
+    await fetch(`${base}/api/memory/reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ keepPersona: true, keepCards: false }),
+    });
+    assert.equal(engine.listMemoryCards().length, 0);
+    assert.equal(engine.getSnapshot().diaries.length, 0);
+    assert.equal(engine.getSnapshot().chapters.length, 0);
+    assert.equal(existsSync(engine.paths.autoGrowthState), false, "resetMemory must clear autoGrowthState cooldown");
+
+    // Import unified pack back -> cards + diaries + monthlyChapters ALL restored
+    const reimp = await (await fetch(`${base}/api/cards/import`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ pack: fullExport.pack, mode: "merge", restorePersona: true }),
+    })).json();
+    assert.equal(reimp.ok, true);
+    assert.equal(reimp.importedFormat, "memory-card-pack");
+    assert.equal(reimp.addedCards, 1);
+    assert.equal(engine.getSnapshot().diaries.length, 1);
+    assert.equal(engine.getSnapshot().chapters.length, 1);
+
+    // Import a legacy soulcard.ledger.v1 JSON directly into /api/cards/import -> seamlessly accepted!
+    const legacyLedger = {
+      schemaVersion: "soulcard.ledger.v1",
+      modelAgnostic: true,
+      diaries: [{ dateKey: "2026-10-01", dayMood: "明朗", diaryEntry: "十月第一天的旧灵魂账本记忆。", consolidatedAt: now0 - 86400000 }],
+      milestones: [],
+      monthlyChapters: [{ monthKey: "2026-10", chapterTitle: "金秋十月", narrative: "旧账本里的十月自传。", createdAt: now0 - 86400000 }],
+      retiredHabits: [],
+    };
+    const legImp = await (await fetch(`${base}/api/cards/import`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ pack: legacyLedger, mode: "merge" }),
+    })).json();
+    assert.equal(legImp.ok, true);
+    assert.equal(legImp.importedFormat, "soul-ledger");
+    assert.equal(engine.getSnapshot().diaries.length, 2);
+    assert.equal(engine.getSnapshot().chapters.length, 2);
+
+    // 5. Minimalist UI subtraction & Zero-XSS structural audit on src/web/index.html
+    const html = await (await fetch(`${base}/`)).text();
+    assert.equal(html.includes(".innerHTML"), false, "Minimalist UI must have zero .innerHTML usage");
+    assert.ok(html.includes('<details class="dev-box" id="devInspector">'), "Developer Inspector must be collapsed by default (no open attr)");
+    assert.ok(html.includes('id="onboardingCard"') && html.includes('id="pAutoGrowth"') && html.includes('id="personaStatus"'));
+
+    // Extract main .shell HTML and strip the auto-hiding #onboardingCard to verify <= 3 visible main buttons
+    const shellStart = html.indexOf('<div class="shell">');
+    const shellEnd = html.indexOf('<div class="backdrop"');
+    assert.ok(shellStart > 0 && shellEnd > shellStart);
+    const shellHtml = html.slice(shellStart, shellEnd).replace(/<div class="onboarding[\s\S]*?<\/div>\s*<\/main>/, "</main>");
+    const mainButtons = shellHtml.match(/<button\b/g) || [];
+    assert.equal(mainButtons.length, 3, `Main distraction-free screen must have exactly 3 visible buttons, found ${mainButtons.length}`);
+  } finally {
+    web.close();
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+console.log(`\nALL ${passed}/13 TEST SUITES PASSED`);
