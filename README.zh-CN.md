@@ -21,7 +21,7 @@
 2. **时间轴错乱与续写惯性**：隔了 3 小时再聊，Transformer 仍对着旧历史气泡强行续写（「水放了没？洗完澡没？」），既出戏又白烧 50%–80% 无效上下文 Token。
 3. **门槛太高 & 厂商绑死**：动辄要求高配显卡装本地模型、装一堆 Python 依赖，或者换一家大模型就把几年的共同回忆全丢了。
 
-**SoulCard** 提供 **16 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全云端模型即开即用（Claude / GPT / Gemini / Grok / DeepSeek / 各类国内免梯中转站）**、**未来伴侣记忆卡系统（`memory-cards.mjs`）**、**双击即用的本地 Web Studio（`start.bat` / `./start.sh` / `npm start`）**、终端实聊（`npm run chat`）以及原生 OneBot v11 桥接（`npm run onebot`），**无需显卡、无需 `npm install`**。
+**SoulCard** 提供 **17 个零依赖纯 ESM 认知核心模块**（`src/core/`，零磁盘/数据库/网络 IO）、**全云端模型即开即用（Claude / GPT / Gemini / Grok / DeepSeek / 各类国内免梯中转站）**、**未来伴侣记忆卡系统（`memory-cards.mjs`）**、**体验学习与社交体感成长闭环（`growth-learning.mjs`）**、**双击即用的本地 Web Studio（`start.bat` / `./start.sh` / `npm start`）**、终端实聊（`npm run chat`）以及原生 OneBot v11 桥接（`npm run onebot`），**无需显卡、无需 `npm install`**。
 
 ---
 
@@ -143,8 +143,8 @@ npm run soul:export            # 导出可跨模型无损迁移的灵魂账本 v
 - ✅ **未来伴侣记忆卡（Memory Cards）**：手动写卡 / AI 带原文证据锁自动提炼 / 一键导出跨模型 `.json` 存卡与人类可读《记忆卡册.md》/ 防 API Key 误存
 - ✅ **旧规矩自然卸载（Prompt Declutter）**：随成长淘汰僵硬条款，拒绝 Prompt 越用越臃肿
 - 🚧 **云端旗舰冲突终审流**：当你的计划或喜好改变时（例如“不去苏州改去成都”），自动调用云端高智商模型关闭旧事实有效期（`invalid_at`），彻底根治过时记忆串味
+- ✅ **成长型体验学习与社交体感复盘闭环**：把「私人记忆卡」与「学习体验随笔」物理分离，分享文章/笔记给 TA 后写出真实第一人称感想与新好奇，并支持一键社交体感复盘与自动淘汰生硬旧规矩（纯云端零显卡）
 - 💡 **可选零显存增强检索引擎（构思中）**：默认保持零依赖纯 JS 秒跑（轻薄本无压力），为记忆量上万的重度用户提供可选 `SQLite FTS5 + 向量 + Reranker` 增强插件
-- 💡 **成长型学习与社交复盘循环（构思中）**：把“私人回忆库”与“兴趣学习手账”物理隔离，让 TA 通过阅读文章/笔记/照片沉淀真实审美观点与社交体感，而不是变成冰冷的文档问答机器
 
 ### 二、快捷（真·懒人一键开箱）
 - ✅ **零 `npm install` · 零显卡 · 一键启动**：Windows 双击 [`start.bat`](./start.bat) / macOS & Linux 运行 `./start.sh` / `npm start` 自动开浏览器

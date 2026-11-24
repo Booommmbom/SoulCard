@@ -845,4 +845,94 @@ await test("11. Portable Future-Companion Memory Cards, Cloud-First Presets, AI 
   }
 });
 
-console.log(`\nALL ${passed}/11 TEST SUITES PASSED`);
+// ---------------------------------------------------------------------------
+// 12. Cloud-First Experiential Learning, Social Intuition Reflection & L0 Path Safety
+// ---------------------------------------------------------------------------
+await test("12. Experiential Learning, Social Intuition Reflection, Stale Habit Retirement & L0 Path Safety", async () => {
+  // 1. Pure L0 path safety classifier
+  assert.equal(sdk.isForbiddenSystemOrSecretPath("C:\\Windows\\System32\\cmd.exe"), true);
+  assert.equal(sdk.isForbiddenSystemOrSecretPath("/Users/runner/.ssh/id_rsa"), true);
+  assert.equal(sdk.isForbiddenSystemOrSecretPath("../../.env"), true);
+  assert.equal(sdk.isForbiddenSystemOrSecretPath("desk/2026-11-24-film.md"), false);
+
+  // 2. Full HTTP E2E for /api/growth/learn, /api/growth/social-reflect, /api/growth/desk & prompt injection
+  const tmpDir = mkdtempSync(join(tmpdir(), "soulcard-growth-test-"));
+  let lastSys = "";
+  const mockFetch = async (_url, opts) => {
+    const reqBody = JSON.parse(String(opts?.body || "{}"));
+    lastSys = reqBody.messages?.find((m) => m.role === "system")?.content || "";
+    const caller = opts?.headers?.["x-soulcard-caller"] || "";
+    let content = "刚也在琢磨逆光胶片色调呢~";
+    if (caller === "experience-study") {
+      content = JSON.stringify({
+        title: "逆光暖黄与暗部呼吸感",
+        category: "审美体验",
+        reaction: "读完好喜欢这种带点暖黄颗粒的逆光构图，比起生硬拉高锐度有故事感多了！",
+        takeaways: ["高光保留柔和暖色过渡", "不过度锐化保留自然呼吸感"],
+        newCuriosity: "怎么用低成本定焦拍出自然逆光光晕",
+      });
+    } else if (caller === "social-reflection") {
+      content = JSON.stringify({
+        newInsight: "聊审美细节时顺手给一个具体画面比喻，比泛泛夸好看更让人有共鸣",
+        retireIds: ["soc-2"],
+        playbookTip: "读完体验笔记后顺手记 1 个具体好奇问题，下次聊天会自然带出来",
+        summary: "这次聊得自然松弛",
+      });
+    }
+    const payload = { choices: [{ message: { role: "assistant", content } }], usage: { prompt_tokens: 80, completion_tokens: 30, total_tokens: 110 } };
+    return { ok: true, status: 200, json: async () => payload, text: async () => JSON.stringify(payload) };
+  };
+
+  const engine = new CompanionEngine({
+    dataDir: join(tmpDir, "data"),
+    envPath: join(tmpDir, ".env"),
+    fetchFn: mockFetch,
+    llmOverrides: { baseUrl: "https://api.deepseek.com", apiKey: "test-placeholder", model: "deepseek-chat", protocol: "openai" },
+  });
+  const web = createWebStudioServer({ engine, fetchFn: mockFetch });
+  await new Promise((r) => web.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${web.address().port}`;
+
+  try {
+    // 2a. Secret in shared learning text MUST be rejected (HTTP 400)
+    const fakeKey = "sk-ant-" + "dummy1234567890abcdef123";
+    const blocked = await fetch(`${base}/api/growth/learn`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "误粘贴", content: `请帮我学一下 ${fakeKey}` }),
+    });
+    assert.equal(blocked.status, 400);
+
+    // 2b. Legitimate study note succeeds, adds curiosity, and does NOT pollute Memory Cards!
+    const learned = await (await fetch(`${base}/api/growth/learn`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "逆光人像心得", content: "逆光拍摄时高光保留暖黄过渡、暗部不要压死，画面更有胶片呼吸感。" }),
+    })).json();
+    assert.equal(learned.ok, true);
+    assert.equal(learned.note.title, "逆光暖黄与暗部呼吸感");
+    assert.equal(engine.listMemoryCards().length, 0, "Study notes must stay separate from personal Memory Cards!");
+    assert.ok(learned.desk.curiosities.some((c) => c.topic.includes("定焦")));
+
+    // 2c. Next chat turn receives the living growth projection naturally!
+    await fetch(`${base}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "最近看啥有意思的了" }) });
+    assert.ok(lastSys.includes("逆光暖黄与暗部呼吸感"), "Study note must project cleanly into companion prompt!");
+    await fetch(`${base}/api/chat`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "改天一起出去扫街拍逆光呀" }) });
+
+    // 2d. Social Intuition Reflection adds fresh insight & retires stiff old rule (soc-2)
+    const refl = await (await fetch(`${base}/api/growth/social-reflect`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).json();
+    assert.equal(refl.ok, true);
+    assert.equal(refl.retiredCount, 1);
+    assert.equal(refl.playbookUpdated, true);
+    assert.ok(refl.desk.socialIntuitions.some((s) => s.insight.includes("画面比喻")));
+
+    const deskRes = await (await fetch(`${base}/api/growth/desk`)).json();
+    assert.equal(deskRes.ok, true);
+    assert.equal(deskRes.desk.studyNotes.length, 1);
+  } finally {
+    web.close();
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+console.log(`\nALL ${passed}/12 TEST SUITES PASSED`);

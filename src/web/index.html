@@ -239,6 +239,20 @@
       </div>
 
       <div class="card">
+        <h3>体验学习 & 社交体感成长 <span class="pill" id="studyCountBadge">0 篇随笔</span></h3>
+        <div class="meta-line">把好文章、想法或资料喂给 TA 读，TA 会写第一人称真实感想并长出自己的小好奇（与私人记忆卡分离，不串味）。</div>
+        <input id="studyTitle" placeholder="主题/标题（如：胶片调色心得 / 一篇影评）" />
+        <textarea class="field" id="studyContent" rows="2" placeholder="粘贴想分享给 TA 体验学习的文章片段、笔记或点子..."></textarea>
+        <div class="row-actions">
+          <button class="sm primary" id="studyLearnBtn">📖 分享给 TA 学习体验</button>
+          <button class="sm" id="socialReflectBtn">🪞 社交体感复盘</button>
+        </div>
+        <div class="status-box" id="studyStatus">支持纯云端学习消化与自动淘汰生硬旧规矩，零显卡流畅运行。</div>
+        <div id="curiosityChips" class="chip-grid"></div>
+        <div id="studyNotesList" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+
+      <div class="card">
         <h3>近期成长日记 <span class="pill" id="diaryCount">0</span></h3>
         <div id="diaryList" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
@@ -519,6 +533,37 @@ function renderState(s) {
 
   // Growth tab
   $("declutterBadge").textContent = `${s.declutter?.statusLabel || "精简健康"} · 活跃${s.declutter?.activeRuleCount || 0} / 卸载${s.declutter?.retiredCount || 0}`;
+
+  const desk = s.growthDesk || {};
+  const studyNotes = desk.studyNotes || [];
+  $("studyCountBadge").textContent = `${studyNotes.length} 篇随笔 · ${(desk.socialIntuitions || []).length} 条体感`;
+  const curBox = $("curiosityChips");
+  curBox.textContent = "";
+  for (const c of (desk.curiosities || []).slice(0, 4)) {
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = `✦ ${String(c.topic || "")}`;
+    curBox.appendChild(pill);
+  }
+  const snBox = $("studyNotesList");
+  snBox.textContent = "";
+  for (const n of studyNotes.slice(0, 4)) {
+    const el = document.createElement("div");
+    el.className = "entry-box";
+    const head = document.createElement("div");
+    head.className = "entry-title";
+    const t = document.createElement("span");
+    t.textContent = String(n.title || "");
+    const cat = document.createElement("span");
+    cat.className = "pill";
+    cat.textContent = String(n.category || "体验");
+    head.append(t, cat);
+    const body = document.createElement("div");
+    body.textContent = String(n.reaction || "");
+    el.append(head, body);
+    snBox.appendChild(el);
+  }
+
   $("diaryCount").textContent = String((s.diaries || []).length);
   const dl = $("diaryList");
   dl.innerHTML = (s.diaries || []).length === 0 ? '<div class="meta-line">聊满 6 条后点「睡前日记整理」即可生成真实第一人称日记。</div>' : "";
@@ -873,6 +918,39 @@ async function runGrowthAction(endpoint, label) {
 $("runDailyBtn").onclick = () => runGrowthAction("/api/consolidate/daily", "睡前日记整理");
 $("runWeeklyBtn").onclick = () => runGrowthAction("/api/consolidate/weekly", "周度成长复盘");
 $("runMonthlyBtn").onclick = () => runGrowthAction("/api/consolidate/monthly", "L3 月度自传");
+
+$("studyLearnBtn").onclick = async () => {
+  const title = $("studyTitle").value.trim();
+  const content = $("studyContent").value.trim();
+  if (!content) {
+    $("studyStatus").className = "status-box err";
+    $("studyStatus").textContent = "请先粘贴要分享给 TA 体验学习的内容。";
+    return;
+  }
+  $("studyStatus").className = "status-box";
+  $("studyStatus").textContent = "TA 正在认真读你分享的内容并写第一人称感想...";
+  const r = await api("/api/growth/learn", { method: "POST", body: JSON.stringify({ title, content }) });
+  $("studyStatus").className = "status-box " + (r.ok ? "ok" : "err");
+  if (!r.ok) {
+    $("studyStatus").textContent = `✖ 学习失败：${r.error || "请检查云端模型配置"}`;
+    return;
+  }
+  $("studyTitle").value = "";
+  $("studyContent").value = "";
+  $("studyStatus").textContent = `✔ 已写下体验随笔《${r.note.title}》：${r.note.reaction}`;
+  await refreshState(false);
+};
+
+$("socialReflectBtn").onclick = async () => {
+  $("studyStatus").className = "status-box";
+  $("studyStatus").textContent = "正在做轻量社交体感复盘与旧规矩卸载...";
+  const r = await api("/api/growth/social-reflect", { method: "POST", body: JSON.stringify({}) });
+  $("studyStatus").className = "status-box " + (r.ok ? "ok" : "err");
+  $("studyStatus").textContent = r.skipped
+    ? `跳过：${r.error || "先聊满 2 轮再来复盘吧"}`
+    : (r.ok ? `✔ 社交体感复盘完成！${r.summary || ""}${r.retiredCount ? `（淘汰 ${r.retiredCount} 条过时规矩）` : ""}` : `✖ 复盘失败：${r.error || "未知错误"}`);
+  await refreshState(false);
+};
 
 $("exportSoulBtn").onclick = async () => {
   const r = await api("/api/soul/export");

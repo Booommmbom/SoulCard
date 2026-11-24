@@ -5,6 +5,7 @@
 import { describePadEmotion, formatPadShort, stepPadEmotion } from "./emotion-pad.mjs";
 import { buildDiaryContinuityHint } from "./episode-consolidation.mjs";
 import { buildGrowthMilestoneHint, buildMonthlyChapterHint } from "./growth-evolution.mjs";
+import { buildGrowthContextProjection } from "./growth-learning.mjs";
 import { formatInnerLifeForPrompt, snapshotInnerLife } from "./inner-life.mjs";
 import { extractConceptTokens } from "./memory-cognition.mjs";
 import { formatMemoryCardsForPrompt, isSensitiveCardText, recallMemoryCards } from "./memory-cards.mjs";
@@ -114,6 +115,7 @@ export function assembleCompanionPrompt({
   pad = null,
   memoryEvents = [],
   memoryCards = [],
+  growthDesk = null,
   diaryEntries = [],
   milestones = [],
   monthlyChapters = [],
@@ -142,10 +144,11 @@ export function assembleCompanionPrompt({
   const recalledCards = recallMemoryCards(memoryCards, userText, { topK: 5, alwaysIncludePinned: 3 });
   const cardsBlock = formatMemoryCardsForPrompt(recalledCards);
 
-  // 4. Hierarchical continuity hints (Daily -> Weekly -> Monthly)
+  // 4. Hierarchical continuity hints (Daily -> Weekly -> Monthly + Living Growth Desk)
   const diaryHint = buildDiaryContinuityHint(diaryEntries, { now, resolvedKeys: resolvedOpenLoopKeys });
   const weeklyHint = buildGrowthMilestoneHint(milestones);
   const monthlyHint = buildMonthlyChapterHint(monthlyChapters);
+  const growthProjection = growthDesk ? buildGrowthContextProjection(growthDesk) : "";
 
   const systemSections = [
     `你叫${p.name}，是${p.role}。你面对的对话对象是${p.partnerName}。`,
@@ -163,6 +166,7 @@ export function assembleCompanionPrompt({
     systemSections.push(timeline.pastContextSummary);
   }
   if (cardsBlock) systemSections.push(cardsBlock);
+  if (growthProjection) systemSections.push(growthProjection);
   if (monthlyHint) systemSections.push(monthlyHint);
   if (weeklyHint) systemSections.push(weeklyHint);
   if (diaryHint) systemSections.push(diaryHint);

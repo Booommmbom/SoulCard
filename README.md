@@ -21,7 +21,7 @@ Most AI companion stacks fail in three predictable ways:
 2. **Temporal Blindness & Continuation Bias**: Replaying 3-hour-old chat bubbles makes Transformers obsessively continue stale actions ("Did you finish your shower yet?" at midnight) while burning 50%–80% extra tokens.
 3. **Vendor Lock-In & Heavy Local GPU Requirements**: Years of memories stay trapped inside proprietary chat logs — or require expensive GPUs & complex Python/Ollama installs.
 
-**SoulCard** solves this with **16 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO), **Cloud-First support for Claude / GPT / Gemini / Grok / DeepSeek & any relay**, **Portable Future-Companion Memory Cards (`memory-cards.mjs`)**, a **1-click Local Web Studio (`start.bat` / `./start.sh` / `npm start`)**, CLI chat (`npm run chat`), and a native OneBot v11 bridge (`npm run onebot`).
+**SoulCard** solves this with **17 zero-dependency pure ESM cognitive modules** (`src/core/`, zero disk/DB/network IO), **Cloud-First support for Claude / GPT / Gemini / Grok / DeepSeek & any relay**, **Portable Future-Companion Memory Cards (`memory-cards.mjs`)**, **Experiential Learning & Social Intuition Growth (`growth-learning.mjs`)**, a **1-click Local Web Studio (`start.bat` / `./start.sh` / `npm start`)**, CLI chat (`npm run chat`), and a native OneBot v11 bridge (`npm run onebot`).
 
 ---
 
@@ -198,8 +198,8 @@ Our long-term north star is simple: **unbreakable memory, zero-friction setup, u
 - ✅ **Portable Future-Companion Memory Cards** (`.json` card pack + readable `.md` Memory Book, verbatim evidence lock, secret-leak blocking, cross-model merge restore)
 - ✅ Habit Retirement & Prompt Declutter (automatically unloads stale rules instead of bloating prompts)
 - 🚧 **Cloud Flagship Conflict Arbiter**: automatic bi-temporal contradiction adjudication (cleanly closing `valid_at / invalid_at` when plans or tastes change, so outdated facts never resurface)
+- ✅ **Growth-Oriented Experiential Learning & Social Intuition Loop**: separate *personal memory cards* from *experiential study notebooks* (turns shared articles/notes into first-person taste reactions + active curiosities + living social intuition that retires stiff old rules, 100% cloud-first & zero GPU)
 - 💡 **Optional Zero-VRAM Hybrid Retrieval Plugin**: pluggable SQLite `FTS5` + vector + cross-encoder reranker for power users with thousands of memories, while keeping the default zero-GPU pure-JS mode effortless for ordinary laptops
-- 💡 **Growth-Oriented Learning Loop (Exploring)**: separating *companion personal memories* from *experiential learning notebooks* (reading articles/books/notes, forming authentic personal tastes and social intuition rather than dry RAG summaries)
 
 ### 2. Effortless & Fast (One-Click Lazy Experience)
 - ✅ Zero `npm install`, zero GPU, double-click [`start.bat`](./start.bat) / `./start.sh` / `npm start` auto-opening Web Studio

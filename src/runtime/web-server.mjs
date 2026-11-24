@@ -286,6 +286,28 @@ export function createWebStudioServer({
         return;
       }
 
+      // --- Cloud-First Experiential Learning & Social Intuition Growth API ---
+      if (req.method === "GET" && pathname === "/api/growth/desk") {
+        sendJson(res, 200, { ok: true, desk: engine.getGrowthDesk() });
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/growth/learn") {
+        const body = await readJsonBody(req);
+        const r = await engine.learnFromContent({
+          title: String(body.title ?? ""),
+          content: String(body.content ?? ""),
+        });
+        sendJson(res, r.ok ? 200 : (r.error?.includes("凭据") || r.error?.includes("太短") ? 400 : 502), r);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/growth/social-reflect") {
+        const r = await engine.runSocialReflection();
+        sendJson(res, r.ok ? 200 : 502, r);
+        return;
+      }
+
       // Live URL normalization preview (pure, zero network)
       if (req.method === "POST" && pathname === "/api/config/preview") {
         const body = await readJsonBody(req);

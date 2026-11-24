@@ -15,6 +15,15 @@ import {
 import { driftPadEmotion } from "../core/emotion-pad.mjs";
 import { collectActiveOpenLoops, detectResolvedOpenLoops } from "../core/episode-consolidation.mjs";
 import { computePromptDeclutterStats } from "../core/growth-evolution.mjs";
+import {
+  DEFAULT_CURIOSITIES,
+  DEFAULT_LEARNING_PLAYBOOK,
+  DEFAULT_SOCIAL_INTUITION,
+  applySocialReflectionPlan,
+  buildExperienceStudyPrompt,
+  buildSocialReflectionPrompt,
+  parseExperienceStudyOutput,
+} from "../core/growth-learning.mjs";
 import { snapshotInnerLife } from "../core/inner-life.mjs";
 import {
   CARD_CATEGORIES,
@@ -112,6 +121,10 @@ export class CompanionEngine {
       turns: join(this.stateDir, "chat-turns.jsonl"),
       memoryEvents: join(this.stateDir, "memory-events.jsonl"),
       memoryCards: join(this.stateDir, "memory-cards.json"),
+      learningPlaybook: join(this.stateDir, "learning-playbook.json"),
+      curiosities: join(this.stateDir, "curiosity-queue.json"),
+      socialIntuition: join(this.stateDir, "social-intuition.json"),
+      studyNotes: join(this.stateDir, "study-notes.jsonl"),
       diaries: join(this.stateDir, "growth-diary.jsonl"),
       milestones: join(this.stateDir, "growth-milestones.jsonl"),
       chapters: join(this.stateDir, "growth-chapters.jsonl"),
@@ -428,6 +441,7 @@ export class CompanionEngine {
       declutter,
       cardCategories: CARD_CATEGORIES,
       memoryCards,
+      growthDesk: this.getGrowthDesk(),
       recentTurns: turns.slice(-40),
       activeTriples: graph.active.slice(-24),
       historicalTriples: graph.historical.slice(-12),
@@ -498,6 +512,7 @@ export class CompanionEngine {
       pad: prevPad,
       memoryEvents,
       memoryCards,
+      growthDesk: this.getGrowthDesk(),
       diaryEntries: diaries,
       milestones,
       monthlyChapters: chapters,
@@ -682,6 +697,129 @@ export class CompanionEngine {
       protocol: cfg.protocol,
       fetchFn: this.fetchFn,
       ...opts,
+    });
+  }
+
+  getGrowthDesk() {
+    const playbook = readJsonSafe(this.paths.learningPlaybook, DEFAULT_LEARNING_PLAYBOOK);
+    const curiosities = readJsonSafe(this.paths.curiosities, [...DEFAULT_CURIOSITIES]);
+    const social = readJsonSafe(this.paths.socialIntuition, DEFAULT_SOCIAL_INTUITION);
+    const studyNotes = readJsonlSafe(this.paths.studyNotes).slice(-20).reverse();
+    return {
+      playbook,
+      curiosities: Array.isArray(curiosities) ? curiosities : [...DEFAULT_CURIOSITIES],
+      social,
+      socialIntuitions: Array.isArray(social?.active) ? social.active : [],
+      studyNotes,
+    };
+  }
+
+  /**
+   * Cloud-first experiential learning: turns any article, note, or snippet shared by the user
+   * into a first-person lived reaction & curiosity note (isolated from personal memory cards).
+   */
+  async learnFromContent({ title = "", content = "", now = Date.now() } = {}) {
+    return await this._enqueue(async () => {
+      const cleanContent = String(content ?? "").trim();
+      if (cleanContent.length < 6) {
+        return { ok: false, error: "分享学习的内容太短了，至少写几句话吧" };
+      }
+      if (isSensitiveCardText(title) || isSensitiveCardText(cleanContent)) {
+        return { ok: false, error: "检测到疑似 API Key、密码或敏感凭据，已阻止发送与保存" };
+      }
+      const desk = this.getGrowthDesk();
+      const persona = this.getPersona();
+      const cfg = this.getLlmConfig();
+      const messages = buildExperienceStudyPrompt({
+        title,
+        content: cleanContent,
+        persona,
+        playbook: desk.playbook,
+      });
+      const llm = await callUnifiedLlm(messages, {
+        baseUrl: cfg.baseUrl,
+        apiKey: cfg.apiKey,
+        model: cfg.model,
+        protocol: cfg.protocol,
+        temperature: 0.55,
+        maxTokens: 900,
+        jsonMode: true,
+        timeoutMs: 60_000,
+        extraHeaders: { "x-soulcard-caller": "experience-study" },
+        fetchFn: this.fetchFn,
+      });
+      if (!llm.ok || !llm.content) {
+        return { ok: false, error: llm.error || "云端模型学习消化失败" };
+      }
+      const parsed = parseExperienceStudyOutput(llm.content, { fallbackTitle: title || "体验随笔", now });
+      if (!parsed.ok) return parsed;
+
+      appendJsonl(this.paths.studyNotes, parsed.note);
+      if (parsed.note.newCuriosity && parsed.note.newCuriosity.length >= 4) {
+        const list = desk.curiosities.filter((c) => c.topic !== parsed.note.newCuriosity);
+        list.unshift({
+          id: `cur-${now.toString(36)}`,
+          topic: parsed.note.newCuriosity,
+          status: "active",
+          addedAt: now,
+          note: `读《${parsed.note.title}》时冒出的新好奇`,
+        });
+        writeJsonAtomic(this.paths.curiosities, list.slice(0, 12));
+      }
+      return { ok: true, note: parsed.note, desk: this.getGrowthDesk() };
+    });
+  }
+
+  /**
+   * Cloud-first Social Intuition Reflection: distills authentic social warmth from recent turns
+   * and automatically retires stiff or outdated habits.
+   */
+  async runSocialReflection({ now = Date.now() } = {}) {
+    return await this._enqueue(async () => {
+      const turns = readJsonlSafe(this.paths.turns).slice(-16);
+      if (turns.length < 2) {
+        return { ok: true, skipped: true, reason: "not_enough_turns", error: "先聊满 2 轮后再做社交体感复盘吧" };
+      }
+      const desk = this.getGrowthDesk();
+      const persona = this.getPersona();
+      const cfg = this.getLlmConfig();
+      const messages = buildSocialReflectionPrompt({
+        recentTurns: turns,
+        activeIntuitions: desk.socialIntuitions,
+        persona,
+      });
+      const llm = await callUnifiedLlm(messages, {
+        baseUrl: cfg.baseUrl,
+        apiKey: cfg.apiKey,
+        model: cfg.model,
+        protocol: cfg.protocol,
+        temperature: 0.35,
+        maxTokens: 900,
+        jsonMode: true,
+        timeoutMs: 60_000,
+        extraHeaders: { "x-soulcard-caller": "social-reflection" },
+        fetchFn: this.fetchFn,
+      });
+      if (!llm.ok || !llm.content) {
+        return { ok: false, error: llm.error || "社交体感复盘调用失败" };
+      }
+      const applied = applySocialReflectionPlan({
+        socialState: desk.social,
+        playbookState: desk.playbook,
+        rawOutput: llm.content,
+        now,
+      });
+      if (!applied.ok) return applied;
+      writeJsonAtomic(this.paths.socialIntuition, applied.nextSocial);
+      if (applied.playbookUpdated) writeJsonAtomic(this.paths.learningPlaybook, applied.nextPlaybook);
+      return {
+        ok: true,
+        addedInsight: applied.addedInsight,
+        retiredCount: applied.retiredCount,
+        playbookUpdated: applied.playbookUpdated,
+        summary: applied.summary,
+        desk: this.getGrowthDesk(),
+      };
     });
   }
 

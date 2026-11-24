@@ -33,7 +33,8 @@
     "./core/eval-benchmark": "./src/core/eval-benchmark.mjs",
     "./core/provider-compat": "./src/core/provider-compat.mjs",
     "./core/companion-brain": "./src/core/companion-brain.mjs",
-    "./core/memory-cards": "./src/core/memory-cards.mjs"
+    "./core/memory-cards": "./src/core/memory-cards.mjs",
+    "./core/growth-learning": "./src/core/growth-learning.mjs"
   },
   "scripts": {
     "start": "node src/runtime/web-server.mjs --open",
