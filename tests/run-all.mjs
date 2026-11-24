@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Complete zero-dependency test suite for Nuomu Soul (Core + Runtime + Gateway).
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import crypto from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
@@ -563,4 +564,127 @@ await test("9. Local Web Studio HTTP API & Native Zero-DSH OneBot v11 Bridge end
   }
 });
 
-console.log(`\nALL ${passed}/9 TEST SUITES PASSED`);
+await test("10. Security hardening & concurrency regression (CSRF, DNS-rebinding, CSP/XSS, .env injection, URL schemes, 400/413, OneBot HMAC & chat serialization)", async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), "nuomu-sec-"));
+  const seenPrompts = [];
+  const slowMockFetch = async (_url, init) => {
+    await new Promise((r) => setTimeout(r, 20));
+    const body = JSON.parse(init?.body || "{}");
+    seenPrompts.push((body.messages || []).length);
+    const last = String(body.messages?.[body.messages.length - 1]?.content || "");
+    return {
+      ok: true,
+      json: async () => ({
+        model: "deepseek-chat",
+        choices: [{ message: { content: `收到：${last}` } }],
+        usage: { prompt_tokens: 25, completion_tokens: 10, total_tokens: 35 },
+      }),
+    };
+  };
+
+  const engine = new CompanionEngine({
+    dataDir: join(tmpDir, "data"),
+    envPath: join(tmpDir, ".env"),
+    fetchFn: slowMockFetch,
+    llmOverrides: { baseUrl: "https://relay.example.com", apiKey: "demo-key", model: "deepseek-chat", protocol: "openai" },
+  });
+  const web = createWebStudioServer({ engine, fetchFn: slowMockFetch });
+  const secret = "unit-test-hmac-secret";
+  const ob = createOneBotBridgeServer({
+    engine,
+    onebotApiUrl: "http://127.0.0.1:9999",
+    ownerId: "12345",
+    webhookSecret: secret,
+    fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}) }),
+    deliverDelay: false,
+  });
+
+  await new Promise((r) => web.listen(0, "127.0.0.1", r));
+  await new Promise((r) => ob.listen(0, "127.0.0.1", r));
+  const wp = web.address().port;
+  const op = ob.address().port;
+
+  try {
+    // 1. Dangerous / malformed URL schemes rejected
+    assert.equal(sdk.normalizeBaseUrl("javascript:alert(1)"), "");
+    assert.equal(sdk.normalizeBaseUrl("file:///etc/passwd"), "");
+    assert.equal(sdk.normalizeBaseUrl("https://"), "");
+
+    // 2. `.env` newline injection prevented
+    const injEnv = join(tmpDir, "inj.env");
+    upsertDotEnvFile(injEnv, { LLM_MODEL: "deepseek-chat\nEVIL_INJECT=1\r\nNODE_OPTIONS=--inspect" });
+    const envRaw = readFileSync(injEnv, "utf8");
+    assert.equal(envRaw.includes("\nEVIL_INJECT="), false);
+
+    // 3. Cross-origin CSRF & DNS-rebinding rejected with HTTP 403
+    const csrf = await fetch(`http://127.0.0.1:${wp}/api/memory/reset`, {
+      method: "POST",
+      headers: { "content-type": "text/plain", origin: "https://evil.example" },
+      body: "{}",
+    });
+    assert.equal(csrf.status, 403);
+
+    const rebindStatus = await new Promise((resolveCode) => {
+      const req = http.request({
+        host: "127.0.0.1",
+        port: wp,
+        path: "/api/state",
+        method: "GET",
+        headers: { host: "evil.rebind.example:3460" },
+      }, (res) => { res.resume(); resolveCode(res.statusCode); });
+      req.end();
+    });
+    assert.equal(rebindStatus, 403);
+
+    // 4. Security headers present on HTML & zero untrusted innerHTML template interpolation
+    const home = await fetch(`http://127.0.0.1:${wp}/`);
+    assert.ok(home.headers.get("content-security-policy"));
+    assert.equal(home.headers.get("x-frame-options"), "DENY");
+    assert.equal(home.headers.get("x-content-type-options"), "nosniff");
+    const html = await home.text();
+    assert.equal(/innerHTML\s*=\s*`[^`]*\$\{/.test(html), false);
+
+    // 5. Malformed JSON -> 400 (not 500)
+    const badJson = await fetch(`http://127.0.0.1:${wp}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{bad",
+    });
+    assert.equal(badJson.status, 400);
+
+    // 6. OneBot HMAC-SHA1 verification rejects forged signature and accepts valid signature
+    const payloadStr = JSON.stringify({ post_type: "message", message_type: "private", user_id: 12345, raw_message: "验签消息" });
+    const badSig = await fetch(`http://127.0.0.1:${op}/`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-signature": "sha1=0000" },
+      body: payloadStr,
+    });
+    assert.equal(badSig.status, 403);
+
+    const validSig = "sha1=" + crypto.createHmac("sha1", secret).update(Buffer.from(payloadStr, "utf8")).digest("hex");
+    const goodSig = await fetch(`http://127.0.0.1:${op}/`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-signature": validSig },
+      body: payloadStr,
+    });
+    assert.equal(goodSig.status, 200);
+
+    // 7. Concurrent chat calls serialize strictly in order (each turn sees previous turn in prompt!)
+    const [r1, r2, r3] = await Promise.all([
+      engine.chat("并发一", { jitter: 1 }),
+      engine.chat("并发二", { jitter: 1 }),
+      engine.chat("并发三", { jitter: 1 }),
+    ]);
+    assert.equal(r1.ok && r2.ok && r3.ok, true);
+    assert.equal(engine.getSnapshot().stats.turnCount, 4); // 1 from goodSig + 3 concurrent
+    // Verify strictly increasing message history length across the 3 serialized concurrent turns
+    const lastThree = seenPrompts.slice(-3);
+    assert.ok(lastThree[0] < lastThree[1] && lastThree[1] < lastThree[2], `expected strictly serialized history growth, got ${JSON.stringify(lastThree)}`);
+  } finally {
+    web.close();
+    ob.close();
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+});
+
+console.log(`\nALL ${passed}/10 TEST SUITES PASSED`);

@@ -34,7 +34,8 @@ const MODEL_CNY_PER_MILLION = {
   "gemini-4-carbon": { input: 14.4, output: 72 },
   "gemini-4-argon": { input: 14.4, output: 72 },
   "gemini-4-neon": { input: 21.6, output: 108 },
-  "ollama:qwen2.5:7b-instruct": { input: 0, output: 0 },
+  "deepseek-chat": { input: 2.0, output: 8.0 },
+  "deepseek-reasoner": { input: 2.0, output: 8.0 },
   deterministic: { input: 0, output: 0 },
 };
 
@@ -67,7 +68,10 @@ function writeJsonlAtomic(filePath, rows) {
 }
 
 function estimateCostCny(modelId, usage) {
-  const rates = MODEL_CNY_PER_MILLION[modelId] || { input: 14.4, output: 72 };
+  const key = String(modelId || "").trim().toLowerCase();
+  if (!key || key.startsWith("ollama:") || key === "deterministic") return 0;
+  const rates = MODEL_CNY_PER_MILLION[key];
+  if (!rates) return 0;
   const prompt = Number(usage?.prompt_tokens ?? 0);
   const completion = Number(usage?.completion_tokens ?? 0);
   return Math.round(((prompt * rates.input + completion * rates.output) / 1_000_000) * 1000000) / 1000000;

@@ -3,7 +3,7 @@
 // Persists all cognitive state transparently as human-readable JSONL / JSON / Markdown
 // under `NUOMU_DATA_DIR`, directly compatible with daily/weekly/monthly/soul-ledger workflows.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { composeAmbientCheckInMessage, evaluateAmbientCheckIn } from "../core/ambient-presence.mjs";
 import {
@@ -36,7 +36,15 @@ function readJsonSafe(filePath, fallback) {
 
 function writeJsonAtomic(filePath, data) {
   mkdirSync(dirname(filePath), { recursive: true });
-  writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n", "utf8");
+  const content = JSON.stringify(data, null, 2) + "\n";
+  const tmpPath = `${filePath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  try {
+    writeFileSync(tmpPath, content, "utf8");
+    renameSync(tmpPath, filePath);
+  } catch {
+    try { if (existsSync(tmpPath)) rmSync(tmpPath, { force: true }); } catch {}
+    writeFileSync(filePath, content, "utf8");
+  }
 }
 
 function readJsonlSafe(filePath) {
@@ -69,10 +77,20 @@ export class CompanionEngine {
     this.envPath = resolve(envPath || process.env.NUOMU_ENV_FILE || join(process.cwd(), ".env"));
     this.fetchFn = fetchFn;
     this.llmOverrides = llmOverrides || {};
+    this._writeQueue = Promise.resolve();
     this.stateDir = join(this.dataDir, "state");
     this.diaryDir = join(this.dataDir, "diary");
     mkdirSync(this.stateDir, { recursive: true });
     mkdirSync(this.diaryDir, { recursive: true });
+  }
+
+  /**
+   * Serialize state-mutating async operations so concurrent turns never race on disk or history.
+   */
+  _enqueue(taskFn) {
+    const run = this._writeQueue.then(taskFn, taskFn);
+    this._writeQueue = run.then(() => {}, () => {});
+    return run;
   }
 
   get paths() {
@@ -203,9 +221,13 @@ export class CompanionEngine {
   }
 
   /**
-   * Run one full autonomous companion conversation turn (zero DSH!).
+   * Run one full autonomous companion conversation turn (zero DSH!, serialized against concurrent races).
    */
-  async chat(userText, { now = Date.now(), pacingMode = "", jitter = null } = {}) {
+  async chat(userText, opts = {}) {
+    return await this._enqueue(() => this._chatUnlocked(userText, opts));
+  }
+
+  async _chatUnlocked(userText, { now = Date.now(), pacingMode = "", jitter = null } = {}) {
     const cleanUser = String(userText ?? "").trim();
     if (!cleanUser) return { ok: false, error: "empty message" };
 
@@ -238,9 +260,10 @@ export class CompanionEngine {
     }
     const updatedResolvedKeys = openLoopsState.resolved.map((r) => String(r?.key || r));
 
-    // 2. Capture durable user fact/preference into transparent L2 memory-events log
+    // 2. Capture durable user fact/preference into transparent L2 memory-events log (deduplicating identical recent repeats)
     let capturedMemory = false;
-    if (shouldCaptureMemoryEvent(cleanUser)) {
+    const lastMemText = memoryEvents.length > 0 ? String(memoryEvents[memoryEvents.length - 1]?.text || "") : "";
+    if (shouldCaptureMemoryEvent(cleanUser) && cleanUser !== lastMemText) {
       const nextId = memoryEvents.length + 1;
       const ev = { id: nextId, ts: now, text: cleanUser, source_type: "user_said", suppressed: 0, forgotten_at: 0 };
       appendJsonl(this.paths.memoryEvents, ev);

@@ -154,21 +154,36 @@ export function maskApiKey(rawKey = "") {
   return `${k.slice(0, 4)}...${k.slice(-4)} (${k.length} chars)`;
 }
 
+const DISALLOWED_SCHEME_RE = /^(?:javascript|file|data|vbscript|ftp|mailto|blob):/i;
+
 /**
- * Clean a pasted base URL: strips quotes/spaces, auto-adds http:// (local) or https:// (remote),
- * removes trailing slashes and accidental hash fragments.
+ * Clean a pasted base URL: strips quotes/spaces, rejects non-HTTP(S) schemes,
+ * auto-adds http:// (local) or https:// (remote), validates structure, and trims trailing slashes.
  */
 export function normalizeBaseUrl(rawUrl = "") {
   let s = String(rawUrl ?? "").trim();
   if (!s) return "";
   s = s.replace(/^['"`]+|['"`]+$/g, "").trim();
-  s = s.replace(/\s+/g, "");
+  s = s.replace(/[\r\n\t\0]+/g, "").replace(/\s+/g, "");
+  if (!s || DISALLOWED_SCHEME_RE.test(s)) return "";
   // Strip accidental trailing '#' or hash fragment (common when copying from browser docs)
   const hashIdx = s.indexOf("#");
   if (hashIdx >= 0) s = s.slice(0, hashIdx);
+  if (!s) return "";
   if (!/^https?:\/\//i.test(s)) {
+    // Reject unknown schemes like "ws://" or "custom:" (except host:port)
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return "";
     const scheme = LOCAL_HOST_RE.test(s) ? "http://" : "https://";
     s = `${scheme}${s.replace(/^\/+/, "")}`;
+  }
+  let parsed;
+  try {
+    parsed = new URL(s);
+  } catch {
+    return "";
+  }
+  if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !parsed.hostname) {
+    return "";
   }
   // Remove trailing slashes except if query string present
   const qIdx = s.indexOf("?");

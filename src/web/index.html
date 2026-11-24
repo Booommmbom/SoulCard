@@ -246,6 +246,7 @@
           </select>
         </div>
         <div><label class="label-sm">语感风格</label><textarea class="field" id="pVoice" rows="2"></textarea></div>
+        <div><label class="label-sm">记忆诚实与自主边界</label><textarea class="field" id="pBoundaries" rows="2"></textarea></div>
         <div class="row-actions">
           <button class="sm primary" id="savePersonaBtn">保存人设</button>
           <button class="sm danger" id="resetMemBtn">彻底清空记忆（零残留）</button>
@@ -269,11 +270,20 @@ $("openSetupBtn").addEventListener("click", () => switchTab("setup"));
 $("bannerSetupBtn").addEventListener("click", () => switchTab("setup"));
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    headers: { "content-type": "application/json", ...(opts.headers || {}) },
-    ...opts,
-  });
-  return await res.json();
+  try {
+    const res = await fetch(path, {
+      headers: { "content-type": "application/json", ...(opts.headers || {}) },
+      ...opts,
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 160)}` };
+    }
+  } catch (err) {
+    return { ok: false, error: `连接本地服务失败: ${err?.message || err}` };
+  }
 }
 
 function appendBubble(role, text, meta = "") {
@@ -368,8 +378,17 @@ function renderState(s) {
   for (const d of (s.diaries || []).slice(0, 6)) {
     const el = document.createElement("div");
     el.className = "entry-box";
-    el.innerHTML = `<div class="entry-title"><span>${d.dateKey}</span><span class="pill">${d.dayMood || ""}</span></div><div></div>`;
-    el.lastChild.textContent = d.diaryEntry || "";
+    const head = document.createElement("div");
+    head.className = "entry-title";
+    const dateSpan = document.createElement("span");
+    dateSpan.textContent = String(d.dateKey || "");
+    const moodSpan = document.createElement("span");
+    moodSpan.className = "pill";
+    moodSpan.textContent = String(d.dayMood || "");
+    head.append(dateSpan, moodSpan);
+    const bodyDiv = document.createElement("div");
+    bodyDiv.textContent = String(d.diaryEntry || "");
+    el.append(head, bodyDiv);
     dl.appendChild(el);
   }
 
@@ -382,21 +401,30 @@ function renderState(s) {
   for (const item of combined.slice(0, 6)) {
     const el = document.createElement("div");
     el.className = "entry-box";
-    el.innerHTML = `<div class="entry-title"><span></span><span class="pill"></span></div><div></div>`;
-    el.querySelector(".entry-title span:first-child").textContent = item.title || "";
-    el.querySelector(".pill").textContent = item.badge;
-    el.lastChild.textContent = item.body || "";
+    const head = document.createElement("div");
+    head.className = "entry-title";
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = String(item.title || "");
+    const badgeSpan = document.createElement("span");
+    badgeSpan.className = "pill";
+    badgeSpan.textContent = String(item.badge || "");
+    head.append(titleSpan, badgeSpan);
+    const bodyDiv = document.createElement("div");
+    bodyDiv.textContent = String(item.body || "");
+    el.append(head, bodyDiv);
     ml.appendChild(el);
   }
 
-  // Setup tab (only fill empty inputs so we don't clobber typing)
-  if (!$("cfgUrl").value) $("cfgUrl").value = s.llm.baseUrl || "";
-  if (!$("cfgModel").value) $("cfgModel").value = s.llm.model || "";
+  // Setup tab (never overwrite inputs the user is actively editing)
+  const activeId = document.activeElement?.id || "";
+  if (!$("cfgUrl").value && activeId !== "cfgUrl") $("cfgUrl").value = s.llm.baseUrl || "";
+  if (!$("cfgModel").value && activeId !== "cfgModel") $("cfgModel").value = s.llm.model || "";
   $("cfgKeyMask").textContent = `当前已保存 Key: ${s.llm.maskedKey || "(空)"}`;
-  $("pName").value = p.name || "";
-  $("pPartner").value = p.partnerName || "";
-  $("pPacing").value = p.pacingMode || "natural";
-  $("pVoice").value = p.voiceStyle || "";
+  if (activeId !== "pName") $("pName").value = p.name || "";
+  if (activeId !== "pPartner") $("pPartner").value = p.partnerName || "";
+  if (activeId !== "pPacing") $("pPacing").value = p.pacingMode || "natural";
+  if (activeId !== "pVoice") $("pVoice").value = p.voiceStyle || "";
+  if (activeId !== "pBoundaries") $("pBoundaries").value = p.boundaries || "";
 
   if ($("presetChips").children.length === 0 && Array.isArray(s.presets)) {
     for (const pr of s.presets) {
@@ -409,6 +437,8 @@ function renderState(s) {
         $("cfgUrl").value = pr.baseUrl || "";
         $("cfgModel").value = pr.defaultModel || "";
         $("cfgProto").value = pr.protocol || "auto";
+        $("cfgKey").dataset.clearKey = pr.requiresKey === false ? "1" : "0";
+        if (pr.requiresKey === false) $("cfgKey").value = "";
         previewUrl();
       };
       $("presetChips").appendChild(chip);
@@ -529,6 +559,7 @@ $("saveConfigBtn").onclick = async () => {
     body: JSON.stringify({
       baseUrl: $("cfgUrl").value,
       apiKey: $("cfgKey").value,
+      clearKey: $("cfgKey").dataset.clearKey === "1" && !$("cfgKey").value.trim(),
       model: $("cfgModel").value,
       protocol: $("cfgProto").value,
     }),
@@ -539,6 +570,7 @@ $("saveConfigBtn").onclick = async () => {
     return;
   }
   $("cfgKey").value = "";
+  $("cfgKey").dataset.clearKey = "0";
   const okPing = r.testResult?.ok;
   $("cfgStatus").className = "status-box " + (okPing ? "ok" : "err");
   $("cfgStatus").textContent = okPing
@@ -555,6 +587,7 @@ $("savePersonaBtn").onclick = async () => {
       partnerName: $("pPartner").value,
       pacingMode: $("pPacing").value,
       voiceStyle: $("pVoice").value,
+      boundaries: $("pBoundaries").value,
     }),
   });
   await refreshState(false);
@@ -574,7 +607,7 @@ async function runGrowthAction(endpoint, label) {
   $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
   $("growthStatus").textContent = r.skipped
     ? `跳过（${r.reason}）：请先聊几轮积累素材后再整理。`
-    : `✔ ${label}完成！${r.record?.diaryEntry || r.record?.milestone || r.record?.narrative || ""}`;
+    : (r.ok ? `✔ ${label}完成！${r.record?.diaryEntry || r.record?.milestone || r.record?.narrative || ""}` : `✖ 执行失败：${r.error || "未知错误"}`);
   await refreshState(false);
 }
 $("runDailyBtn").onclick = () => runGrowthAction("/api/consolidate/daily", "睡前日记整理");
@@ -583,12 +616,18 @@ $("runMonthlyBtn").onclick = () => runGrowthAction("/api/consolidate/monthly", "
 
 $("exportSoulBtn").onclick = async () => {
   const r = await api("/api/soul/export");
-  if (!r.ok) return;
+  if (!r.ok) {
+    $("growthStatus").className = "status-box err";
+    $("growthStatus").textContent = `✖ 导出失败：${r.error || "未知错误"}`;
+    return;
+  }
   const blob = new Blob([JSON.stringify(r.payload, null, 2)], { type: "application/json" });
+  const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
+  a.href = blobUrl;
   a.download = `nuomu-soul-ledger-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
   $("growthStatus").className = "status-box ok";
   $("growthStatus").textContent = `✔ 已导出灵魂账本 v1（${JSON.stringify(r.stats)}）`;
 };
@@ -597,13 +636,19 @@ $("importSoulBtn").onclick = () => $("importSoulFile").click();
 $("importSoulFile").onchange = async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
-  const text = await file.text();
-  const payload = JSON.parse(text);
-  const r = await api("/api/soul/import", { method: "POST", body: JSON.stringify({ payload, mode: "merge" }) });
-  $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
-  $("growthStatus").textContent = r.ok ? `✔ 灵魂账本无损合并还原成功：${JSON.stringify(r.totals)}` : `✖ 导入失败：${r.error}`;
-  e.target.value = "";
-  await refreshState(false);
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    const r = await api("/api/soul/import", { method: "POST", body: JSON.stringify({ payload, mode: "merge" }) });
+    $("growthStatus").className = "status-box " + (r.ok ? "ok" : "err");
+    $("growthStatus").textContent = r.ok ? `✔ 灵魂账本无损合并还原成功：${JSON.stringify(r.totals)}` : `✖ 导入失败：${r.error}`;
+    await refreshState(false);
+  } catch (err) {
+    $("growthStatus").className = "status-box err";
+    $("growthStatus").textContent = `✖ 所选文件不是合法的灵魂账本 JSON：${err?.message || err}`;
+  } finally {
+    e.target.value = "";
+  }
 };
 
 refreshState(true).then(previewUrl);

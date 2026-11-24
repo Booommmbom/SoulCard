@@ -105,7 +105,17 @@ function resolveThinkingLevel(requestedEffort, modelId) {
 const TIMEOUT_MS = 300000;
 const LOG_PATH = path.join(ROOT, "logs", "vertex-gateway.log");
 const PID_PATH = path.join(DATA_DIR, "state", "vertex-gateway.pid");
+const MAX_THOUGHT_SIGNATURES = 500;
 const thoughtSignatures = new Map();
+
+function rememberThoughtSignature(id, signature) {
+  if (!id || !signature) return;
+  if (thoughtSignatures.size >= MAX_THOUGHT_SIGNATURES) {
+    const oldestKey = thoughtSignatures.keys().next().value;
+    if (oldestKey !== undefined) thoughtSignatures.delete(oldestKey);
+  }
+  thoughtSignatures.set(id, String(signature));
+}
 
 function log(message) {
   try {
@@ -133,15 +143,22 @@ const authProvider = createVertexAuthProvider({
   defaultProject: PROJECT,
 });
 
-function cors(res) {
-  res.setHeader("access-control-allow-origin", "*");
-  res.setHeader("access-control-allow-headers", "content-type, authorization");
+const LOCAL_ORIGIN_RE = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i;
+const LOCAL_HOST_RE = /^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i;
+
+function cors(req, res) {
+  const origin = String(req?.headers?.origin || "").trim();
+  if (origin && LOCAL_ORIGIN_RE.test(origin)) {
+    res.setHeader("access-control-allow-origin", origin);
+    res.setHeader("vary", "Origin");
+  }
+  res.setHeader("access-control-allow-headers", "content-type, authorization, x-nuomu-caller");
   res.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
 }
 
-function json(res, status, value) {
-  cors(res);
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+function json(req, res, status, value) {
+  cors(req, res);
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
   res.end(JSON.stringify(value));
 }
 
@@ -152,15 +169,20 @@ function readBody(req) {
     req.on("data", (chunk) => {
       size += chunk.length;
       if (size > MAX_BODY) {
+        const err = new Error("request body too large");
+        err.status = 413;
         req.destroy();
-        reject(new Error("request body too large"));
+        reject(err);
         return;
       }
       chunks.push(chunk);
     });
     req.on("end", () => {
       try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}")); }
-      catch (error) { reject(error); }
+      catch (error) {
+        error.status = 400;
+        reject(error);
+      }
     });
     req.on("error", reject);
   });
@@ -303,7 +325,7 @@ function fromGemini(data, modelId = DEFAULT_MODEL) {
       const id = `call_gemini_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
       const name = String(part.functionCall.name ?? "");
       const signature = part.thoughtSignature || part.functionCall.thoughtSignature;
-      if (signature) thoughtSignatures.set(id, String(signature));
+      if (signature) rememberThoughtSignature(id, signature);
       toolCalls.push({ id, type: "function", function: { name, arguments: JSON.stringify(part.functionCall.args ?? {}) } });
     }
   }
@@ -324,8 +346,8 @@ function sse(res, payload) {
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
-function streamOpenAI(res, response) {
-  cors(res);
+function streamOpenAI(req, res, response) {
+  cors(req, res);
   res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive" });
   const choice = response.choices[0];
   const id = response.id;
@@ -355,19 +377,24 @@ async function callVertex(body) {
 }
 
 const server = http.createServer(async (req, res) => {
-  cors(res);
+  const host = String(req.headers.host || "").trim();
+  const origin = String(req.headers.origin || "").trim();
+  if ((host && !LOCAL_HOST_RE.test(host)) || (origin && !LOCAL_ORIGIN_RE.test(origin))) {
+    return json(req, res, 403, { error: { message: "forbidden: non-localhost Host or Origin rejected", type: "forbidden" } });
+  }
+  cors(req, res);
   if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
   const url = new URL(req.url ?? "/", `http://${HOST}`);
   try {
     if (req.method === "GET" && url.pathname === "/health") {
       const status = authProvider.detectStatus();
-      return json(res, 200, { ok: true, provider: "nuomu-vertex-gateway", model: DEFAULT_MODEL, models: Object.keys(GEMINI4_MODELS), project: status.project, location: LOCATION, authMode: status.authMode, endpoint: status.endpoint, configured: status.configured });
+      return json(req, res, 200, { ok: true, provider: "nuomu-vertex-gateway", model: DEFAULT_MODEL, models: Object.keys(GEMINI4_MODELS), project: status.project, location: LOCATION, authMode: status.authMode, endpoint: status.endpoint, configured: status.configured });
     }
     if (req.method === "GET" && url.pathname === "/v1/models") {
       const now = Math.floor(Date.now() / 1000);
-      return json(res, 200, { object: "list", data: Object.keys(GEMINI4_MODELS).map((id) => ({ id, object: "model", owned_by: "google-gemini", created: now })) });
+      return json(req, res, 200, { object: "list", data: Object.keys(GEMINI4_MODELS).map((id) => ({ id, object: "model", owned_by: "google-gemini", created: now })) });
     }
-    if (req.method !== "POST" || url.pathname !== "/v1/chat/completions") return json(res, 404, { error: { message: "not found" } });
+    if (req.method !== "POST" || url.pathname !== "/v1/chat/completions") return json(req, res, 404, { error: { message: "not found" } });
     const body = await readBody(req);
     const reqModel = resolveModel(body.model);
     const reqThinking = resolveThinkingLevel(body.reasoning_effort ?? body.reasoningEffort ?? "high", reqModel);
@@ -377,16 +404,25 @@ const server = http.createServer(async (req, res) => {
     const st = authProvider.detectStatus();
     recordGatewayUsage({ model: reqModel, thinking: reqThinking, caller, usage: response.usage, endpoint: st.endpoint });
     log(`response model=${reqModel} status=200 finish=${response.choices?.[0]?.finish_reason ?? "unknown"} prompt=${response.usage?.prompt_tokens ?? 0} completion=${response.usage?.completion_tokens ?? 0}`);
-    if (body.stream === true) return streamOpenAI(res, response);
-    return json(res, 200, response);
+    if (body.stream === true) return streamOpenAI(req, res, response);
+    return json(req, res, 200, response);
   } catch (error) {
+    const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600 ? error.status : 502;
     const detail = error?.cause?.message ? `${error.message} (${error.cause.message})` : String(error?.message ?? error);
     log(`error ${detail}`);
-    return json(res, 502, { error: { message: detail, type: "vertex_gateway_error" } });
+    return json(req, res, status, { error: { message: detail, type: status === 502 ? "vertex_gateway_error" : "invalid_request" } });
   }
 });
 
 if (require.main === module) {
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`✖ Port ${PORT} is already in use. Set NUOMU_VERTEX_PORT to a free port.`);
+      process.exit(1);
+    }
+    console.error(err);
+    process.exit(1);
+  });
   server.listen(PORT, HOST, () => {
     fs.mkdirSync(path.dirname(PID_PATH), { recursive: true });
     fs.writeFileSync(PID_PATH, String(process.pid), "utf8");

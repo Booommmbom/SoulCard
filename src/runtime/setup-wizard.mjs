@@ -23,14 +23,32 @@ import {
 } from "../core/provider-compat.mjs";
 import { listRemoteModels, testLlmConnection } from "./llm-client.mjs";
 
+function sanitizeEnvKey(rawKey) {
+  const k = String(rawKey ?? "").trim();
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(k) ? k : "";
+}
+
+function sanitizeEnvValue(rawVal) {
+  // Strip CR/LF/NUL completely to prevent `.env` newline injection attacks
+  const singleLine = String(rawVal ?? "").replace(/[\r\n\0]+/g, "").trim();
+  if (!singleLine) return "";
+  if (/[\s#"'`]/.test(singleLine)) {
+    return `"${singleLine.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return singleLine;
+}
+
 /**
  * Safely write or update key=value pairs in a `.env` file while preserving unrelated lines & comments.
+ * Prevents newline injection and enforces owner-only permissions (0600 on POSIX).
  */
 export function upsertDotEnvFile(envPath, updates = {}) {
   const target = resolve(envPath);
   mkdirSync(dirname(target), { recursive: true });
   const existingLines = existsSync(target) ? readFileSync(target, "utf8").split(/\r?\n/) : [];
-  const entries = Object.entries(updates).filter(([k]) => Boolean(k));
+  const entries = Object.entries(updates)
+    .map(([k, v]) => [sanitizeEnvKey(k), sanitizeEnvValue(v)])
+    .filter(([k]) => Boolean(k));
   const remaining = new Map(entries);
   const nextLines = [];
 
@@ -56,7 +74,7 @@ export function upsertDotEnvFile(envPath, updates = {}) {
   }
 
   const finalText = nextLines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
-  writeFileSync(target, finalText, "utf8");
+  writeFileSync(target, finalText, { encoding: "utf8", mode: 0o600 });
   return target;
 }
 

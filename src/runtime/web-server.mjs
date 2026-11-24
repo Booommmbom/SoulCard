@@ -23,9 +23,41 @@ loadDotEnv();
 
 const WEB_HTML_PATH = fileURLToPath(new URL("../web/index.html", import.meta.url));
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
+const LOCAL_HOST_HEADER_RE = /^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i;
+const LOCAL_ORIGIN_RE = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i;
+
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function setSecurityHeaders(res, { isHtml = false } = {}) {
+  res.setHeader("x-content-type-options", "nosniff");
+  res.setHeader("x-frame-options", "DENY");
+  res.setHeader("referrer-policy", "no-referrer");
+  if (isHtml) {
+    res.setHeader(
+      "content-security-policy",
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    );
+  }
+}
+
+function isAllowedLocalRequest(req) {
+  const host = String(req.headers.host || "").trim();
+  if (host && !LOCAL_HOST_HEADER_RE.test(host)) return false;
+  const origin = String(req.headers.origin || "").trim();
+  if (origin && !LOCAL_ORIGIN_RE.test(origin)) return false;
+  const secFetchSite = String(req.headers["sec-fetch-site"] || "").trim().toLowerCase();
+  if (secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "none") return false;
+  return true;
+}
 
 function sendJson(res, status, payload) {
   res.statusCode = status;
+  setSecurityHeaders(res);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("cache-control", "no-store");
   res.end(JSON.stringify(payload));
@@ -36,12 +68,16 @@ async function readJsonBody(req) {
   const chunks = [];
   for await (const chunk of req) {
     bytes += chunk.length;
-    if (bytes > MAX_BODY_BYTES) throw new Error("request body too large");
+    if (bytes > MAX_BODY_BYTES) throw new HttpError(413, "request body too large (max 4MB)");
     chunks.push(chunk);
   }
   const raw = Buffer.concat(chunks).toString("utf8").trim();
   if (!raw) return {};
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new HttpError(400, "invalid JSON body");
+  }
 }
 
 /**
@@ -55,6 +91,12 @@ export function createWebStudioServer({
 
   return http.createServer(async (req, res) => {
     try {
+      // Protect localhost server from cross-origin CSRF & DNS-rebinding attacks
+      if (!isAllowedLocalRequest(req)) {
+        sendJson(res, 403, { ok: false, error: "forbidden: cross-origin or non-localhost Host header rejected" });
+        return;
+      }
+
       const urlObj = new URL(req.url || "/", "http://127.0.0.1");
       const pathname = urlObj.pathname;
 
@@ -62,6 +104,7 @@ export function createWebStudioServer({
       if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
         const html = existsSync(WEB_HTML_PATH) ? readFileSync(WEB_HTML_PATH, "utf8") : "<h1>Nuomu Soul Studio</h1>";
         res.statusCode = 200;
+        setSecurityHeaders(res, { isHtml: true });
         res.setHeader("content-type", "text/html; charset=utf-8");
         res.setHeader("cache-control", "no-store");
         res.end(html);
@@ -263,23 +306,52 @@ export function createWebStudioServer({
 
       sendJson(res, 404, { ok: false, error: "not found" });
     } catch (err) {
-      sendJson(res, 500, { ok: false, error: String(err?.message || err) });
+      const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
+      sendJson(res, status, { ok: false, error: String(err?.message || err) });
     }
+  });
+}
+
+function listenWithAutoFallback(server, startPort, maxAttempts = 10) {
+  return new Promise((resolvePort, rejectErr) => {
+    let attempt = 0;
+    const tryPort = (port) => {
+      const onError = (err) => {
+        if (err.code === "EADDRINUSE" && attempt < maxAttempts - 1) {
+          attempt += 1;
+          tryPort(port + 1);
+          return;
+        }
+        rejectErr(err);
+      };
+      server.once("error", onError);
+      server.listen(port, "127.0.0.1", () => {
+        server.off("error", onError);
+        resolvePort(port);
+      });
+    };
+    tryPort(startPort);
   });
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
 if (isMain) {
-  const port = Number(process.env.NUOMU_WEB_PORT || 3460);
+  const requestedPort = Number(process.env.NUOMU_WEB_PORT || 3460);
   const engine = new CompanionEngine();
   const server = createWebStudioServer({ engine });
-  server.listen(port, "127.0.0.1", () => {
+  listenWithAutoFallback(server, requestedPort).then((boundPort) => {
     const snap = engine.getSnapshot();
     console.log("\n==============================================================");
     console.log("  Nuomu Soul — Autonomous Zero-DSH Web Studio");
-    console.log(`  Open in browser: http://127.0.0.1:${port}`);
+    if (boundPort !== requestedPort) {
+      console.log(`  Notice         : Port ${requestedPort} is busy, auto-switched to ${boundPort}`);
+    }
+    console.log(`  Open in browser: http://127.0.0.1:${boundPort}`);
     console.log(`  Data directory : ${snap.dataDir}`);
     console.log(`  Active LLM     : ${snap.llm.model} (${snap.llm.source}:${snap.llm.protocol})`);
     console.log("==============================================================\n");
+  }).catch((err) => {
+    console.error(`✖ 启动失败: ${err?.message || err}`);
+    process.exit(1);
   });
 }

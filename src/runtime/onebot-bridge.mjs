@@ -6,6 +6,7 @@
 // Usage:
 //   ONEBOT_LISTEN_PORT=3461 ONEBOT_API_URL=http://127.0.0.1:3000 ONEBOT_OWNER_ID=<your_id> node src/runtime/onebot-bridge.mjs
 
+import crypto from "node:crypto";
 import http from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,18 @@ import { CompanionEngine } from "./companion-engine.mjs";
 import { loadDotEnv } from "./llm-client.mjs";
 
 loadDotEnv();
+
+const MAX_ONEBOT_BODY_BYTES = 1 * 1024 * 1024;
+
+function verifyOneBotSignature(rawBuf, headerSig, secret) {
+  if (!secret) return true;
+  const sig = String(headerSig || "").trim();
+  if (!sig.startsWith("sha1=")) return false;
+  const expected = "sha1=" + crypto.createHmac("sha1", secret).update(rawBuf).digest("hex");
+  const a = Buffer.from(sig, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, Math.max(0, Number(ms) || 0)));
@@ -45,6 +58,7 @@ export function createOneBotBridgeServer({
   engine = new CompanionEngine(),
   onebotApiUrl = process.env.ONEBOT_API_URL || "http://127.0.0.1:3000",
   onebotToken = process.env.ONEBOT_ACCESS_TOKEN || "",
+  webhookSecret = process.env.ONEBOT_WEBHOOK_SECRET || "",
   ownerId = String(process.env.ONEBOT_OWNER_ID || "").trim(),
   fetchFn = globalThis.fetch,
   deliverDelay = true,
@@ -67,7 +81,12 @@ export function createOneBotBridgeServer({
   return http.createServer(async (req, res) => {
     res.setHeader("content-type", "application/json; charset=utf-8");
     if (req.method === "GET" && req.url === "/health") {
-      res.end(JSON.stringify({ ok: true, bridge: "nuomu-onebot-v11-zero-dsh", ownerAllowlistEnabled: Boolean(ownerId) }));
+      res.end(JSON.stringify({
+        ok: true,
+        bridge: "nuomu-onebot-v11-zero-dsh",
+        ownerAllowlistEnabled: Boolean(ownerId),
+        hmacVerificationEnabled: Boolean(webhookSecret),
+      }));
       return;
     }
     if (req.method !== "POST") {
@@ -76,11 +95,29 @@ export function createOneBotBridgeServer({
       return;
     }
 
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
+    const chunks = [];
+    let totalBytes = 0;
+    for await (const chunk of req) {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_ONEBOT_BODY_BYTES) {
+        res.statusCode = 413;
+        res.end(JSON.stringify({ ok: false, error: "payload too large" }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    }
+    const rawBuf = Buffer.concat(chunks);
+
+    if (webhookSecret && !verifyOneBotSignature(rawBuf, req.headers["x-signature"], webhookSecret)) {
+      res.statusCode = 403;
+      res.end(JSON.stringify({ ok: false, error: "invalid x-signature" }));
+      return;
+    }
+
     let event;
     try {
-      event = JSON.parse(raw || "{}");
+      event = JSON.parse(rawBuf.toString("utf8") || "{}");
     } catch {
       res.statusCode = 400;
       res.end(JSON.stringify({ ok: false, error: "invalid JSON" }));
@@ -127,7 +164,18 @@ const isMain = process.argv[1] && resolve(process.argv[1]).toLowerCase() === fil
 if (isMain) {
   const port = Number(process.env.ONEBOT_LISTEN_PORT || 3461);
   const server = createOneBotBridgeServer();
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`✖ 端口 ${port} 已被占用，请通过环境变量 ONEBOT_LISTEN_PORT 指定空闲端口后重试。`);
+      process.exit(1);
+    }
+    console.error(err);
+    process.exit(1);
+  });
   server.listen(port, "127.0.0.1", () => {
     console.log(`Nuomu Zero-DSH OneBot v11 Bridge listening on http://127.0.0.1:${port}`);
+    if (!String(process.env.ONEBOT_OWNER_ID || "").trim()) {
+      console.warn("⚠ 安全提示：未设置 ONEBOT_OWNER_ID，当前将响应所有私聊消息；建议在 .env 中设置你的专属账号 ID。");
+    }
   });
 }

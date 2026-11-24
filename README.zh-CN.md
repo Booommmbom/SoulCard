@@ -84,7 +84,7 @@ npm run web
 # 方式 B：一秒离线跑通 8 大认知支柱完整生命周期演示（无需 Key，算法全在本地跑）
 npm run demo
 
-# 方式 C：终端实聊 / 跑全量 9 大套单元测试 / 零泄密安全审计
+# 方式 C：终端实聊 / 跑全量 10 大套单测与安全回归 / 零泄密安全审计
 npm run chat
 npm test
 npm run audit:secrets
