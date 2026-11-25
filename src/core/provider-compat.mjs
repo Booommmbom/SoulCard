@@ -572,3 +572,64 @@ export function diagnoseConnectionError({ status = 0, bodyText = "", errorMessag
   }
   return `请求失败${status ? ` (HTTP ${status})` : ""}${body ? `: ${body}` : errorMessage ? `: ${errorMessage}` : ""}`;
 }
+
+/**
+ * Flatten foreign `assistant(tool_calls)` + `tool` message pairs into strict alternating
+ * plain-text `assistant -> user` handoff messages when switching providers or models mid-turn.
+ * Prevents Vertex/Gemini 4 HTTP 400 (`missing thought_signature`) and DeepSeek Reasoner
+ * HTTP 400 (`missing reasoning_content`) on cross-provider tool handoffs.
+ */
+export function flattenForeignToolTurns(messages = []) {
+  const src = Array.isArray(messages) ? messages : [];
+  const hasForeignTools = src.some(
+    (m) => (m?.role === "assistant" && Array.isArray(m.tool_calls) && m.tool_calls.length > 0) || m?.role === "tool"
+  );
+  if (!hasForeignTools) return src.map((m) => ({ ...m }));
+
+  const out = [];
+  let i = 0;
+  while (i < src.length) {
+    const msg = src[i];
+    if (msg?.role === "assistant" && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+      const callMap = new Map();
+      for (const c of msg.tool_calls) {
+        callMap.set(String(c?.id || ""), {
+          name: String(c?.function?.name || "tool"),
+          args: String(c?.function?.arguments || "{}").slice(0, 300),
+        });
+      }
+      const toolLines = [];
+      let j = i + 1;
+      while (j < src.length && src[j]?.role === "tool") {
+        const tm = src[j];
+        const meta = callMap.get(String(tm.tool_call_id || ""));
+        const tName = meta?.name || String(tm.name || "tool");
+        const tArgs = meta?.args || "{}";
+        const tOut = String(tm.content ?? "").slice(0, 1200);
+        toolLines.push(`- ${tName}(${tArgs}) => ${tOut}`);
+        j += 1;
+      }
+      const prevText = typeof msg.content === "string" && msg.content.trim() ? msg.content.trim() : "Working on that now.";
+      out.push({ role: "assistant", content: prevText });
+      if (toolLines.length > 0) {
+        out.push({
+          role: "user",
+          content: `[Internal cross-provider tool handoff: previous model executed tools and switched to the active model. Reply naturally using these results without repeating this notice.]\n${toolLines.join("\n")}`,
+        });
+      }
+      i = j;
+      continue;
+    }
+    if (msg?.role === "tool") {
+      out.push({
+        role: "user",
+        content: `[Internal tool handoff: ${String(msg.name || "tool")}] ${String(msg.content ?? "").slice(0, 1200)}`,
+      });
+      i += 1;
+      continue;
+    }
+    out.push({ ...msg });
+    i += 1;
+  }
+  return out;
+}

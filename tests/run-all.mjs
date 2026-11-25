@@ -1124,4 +1124,64 @@ await test("13. Minimalist UI Subtraction, $0 Silent Auto-Card, Cost-Guarded Bac
   }
 });
 
-console.log(`\nALL ${passed}/13 TEST SUITES PASSED`);
+// =========================================================================
+// 14. Cross-Provider Tool Handoff, Gemini 4 thoughtSignature Fallback & Hardened L0 Path Guards
+// =========================================================================
+await test("14. Cross-Provider Tool Handoff, Gemini Gateway thoughtSignature Fallback & Hardened L0 Guards", () => {
+  const gw = require("../src/gateway/gemini-gateway.cjs");
+
+  // 1. Gemini gateway toGemini() attaches skip_thought_signature_validator when call ID is foreign / uncached
+  const converted = gw.toGemini({
+    model: "gemini-4-hydrogen",
+    reasoning_effort: "low",
+    messages: [
+      { role: "user", content: "switch model" },
+      { role: "assistant", content: null, tool_calls: [{ id: "call_foreign_ds_01", type: "function", function: { name: "switch_model", arguments: "{\"mode\":\"hydrogen-low\"}" } }] },
+      { role: "tool", tool_call_id: "call_foreign_ds_01", name: "switch_model", content: "{\"ok\":true}" },
+    ],
+  });
+  const fcPart = converted.request.contents.find((c) => c.role === "model")?.parts?.[0];
+  assert.ok(fcPart?.functionCall, "toGemini must emit functionCall");
+  assert.equal(fcPart.thoughtSignature, "skip_thought_signature_validator");
+
+  // 2. Gemini gateway fromGemini() preserves safety_block metadata
+  const blocked = gw.fromGemini({ promptFeedback: { blockReason: "SAFETY" }, candidates: [{ finishReason: "SAFETY", content: { parts: [] } }] }, "gemini-4-hydrogen");
+  assert.equal(blocked.choices[0].finish_reason, "content_filter");
+  assert.equal(blocked.safety_block?.blockReason, "SAFETY");
+
+  // 3. flattenForeignToolTurns() strips foreign tool_calls/tool messages while preserving tool outputs & strict role alternation
+  const flat = sdk.flattenForeignToolTurns([
+    { role: "system", content: "sys" },
+    { role: "user", content: "switch back to gemini" },
+    { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "switch_model", arguments: "{\"mode\":\"gemini4-hydrogen-low\"}" } }] },
+    { role: "tool", tool_call_id: "c1", name: "switch_model", content: "{\"ok\":true,\"label\":\"Gemini 4 Hydrogen LOW\"}" },
+  ]);
+  assert.ok(!flat.some((m) => m.role === "tool" || m.tool_calls), "Flattened handoff must contain zero foreign tool_calls or tool roles");
+  assert.equal(flat[flat.length - 1].role, "user");
+  assert.ok(flat[flat.length - 1].content.includes("Gemini 4 Hydrogen LOW"));
+
+  // Non-tool messages pass through cleanly unchanged
+  const plain = sdk.flattenForeignToolTurns([{ role: "system", content: "s" }, { role: "user", content: "hi" }]);
+  assert.equal(plain.length, 2);
+
+  // 4. Hardened L0 classifier blocks Windows UNC, \\?\ device paths, NTFS ADS, .env.*, Firefox profiles, and token files
+  const blockedPaths = [
+    "\\\\?\\C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "\\\\.\\PhysicalDrive0",
+    "\\\\192.168.1.5\\share\\secret.txt",
+    "//127.0.0.1/c$/Windows/win.ini",
+    "C:\\projects\\notes.txt:Zone.Identifier",
+    "C:\\projects\\.env.local",
+    "C:\\Users\\YOUR_USER\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\default\\logins.json",
+    "C:\\app\\state\\owner-token.plain.txt",
+    "C:\\app\\config\\bridge.token",
+    "C:\\Users\\YOUR_USER\\NTUSER.DAT",
+  ];
+  for (const p of blockedPaths) {
+    assert.equal(sdk.isForbiddenSystemOrSecretPath(p), true, `Hardened L0 classifier MUST block: ${p}`);
+  }
+  assert.equal(sdk.isForbiddenSystemOrSecretPath("D:/workspace/journal/notes.md"), false);
+  assert.equal(sdk.isForbiddenSystemOrSecretPath("/home/demo/notes/diary.md"), false);
+});
+
+console.log(`\nALL ${passed}/14 TEST SUITES PASSED`);

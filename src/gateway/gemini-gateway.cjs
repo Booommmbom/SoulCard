@@ -256,11 +256,14 @@ function toGemini(body) {
         toolNames.set(id, name);
         const functionCall = { name, args: parseJson(call.function?.arguments) };
         const signature = thoughtSignatures.get(id);
-        // Vertex expects thoughtSignature on the Part, alongside functionCall.
-        // Putting it inside function_call makes the REST schema reject the
-        // entire request once a prior tool call is replayed.
-        const part = { functionCall };
-        if (signature) part.thoughtSignature = signature;
+        // Vertex/Gemini 4 strictly requires thoughtSignature on every functionCall Part.
+        // Putting it on the Part (not inside functionCall) satisfies the REST schema, and
+        // falling back to Google's skip_thought_signature_validator sentinel prevents 400s
+        // when a tool call originated from another provider or predates a gateway restart.
+        const part = {
+          functionCall,
+          thoughtSignature: signature || "skip_thought_signature_validator",
+        };
         parts.push(part);
       }
       if (parts.length > 0) contents.push({ role: "model", parts });
@@ -331,7 +334,12 @@ function fromGemini(data, modelId = DEFAULT_MODEL) {
   }
   const message = { role: "assistant", content: text.join("") };
   if (toolCalls.length > 0) message.tool_calls = toolCalls;
-  const finish = toolCalls.length > 0 ? "tool_calls" : (candidate.finishReason === "MAX_TOKENS" ? "length" : "stop");
+  const blockReason = String(data?.promptFeedback?.blockReason ?? "").trim();
+  const rawFinish = String(candidate.finishReason ?? "").trim();
+  const isSafetyBlocked = Boolean(blockReason) || ["SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION"].includes(rawFinish);
+  const finish = toolCalls.length > 0
+    ? "tool_calls"
+    : (rawFinish === "MAX_TOKENS" ? "length" : (isSafetyBlocked ? "content_filter" : "stop"));
   return {
     id: `chatcmpl-${Date.now()}`,
     object: "chat.completion",
@@ -339,6 +347,7 @@ function fromGemini(data, modelId = DEFAULT_MODEL) {
     model: modelId,
     choices: [{ index: 0, message, finish_reason: finish }],
     usage: usageOf(data?.usageMetadata),
+    ...(isSafetyBlocked ? { safety_block: { blockReason: blockReason || rawFinish } } : {}),
   };
 }
 
@@ -365,15 +374,53 @@ function streamOpenAI(req, res, response) {
   res.end("data: [DONE]\n\n");
 }
 
+function isRetryableNetworkError(error) {
+  const msg = `${error?.message || ""} ${error?.cause?.message || ""} ${error?.cause?.code || ""}`.toLowerCase();
+  return /other side closed|econnreset|etimedout|und_err_socket|socket hang up|eai_again|fetch failed/.test(msg);
+}
+
 async function callVertex(body) {
   const { request, modelId, thinkingLevel } = toGemini(body);
   const { url, headers } = await authProvider.buildVertexRequest({ location: LOCATION, model: modelId });
-  const fetchOptions = { method: "POST", headers, body: JSON.stringify(request), signal: AbortSignal.timeout(TIMEOUT_MS) };
-  if (vertexDispatcher) fetchOptions.dispatcher = vertexDispatcher;
-  const response = await undiciFetch(url, fetchOptions);
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Vertex HTTP ${response.status}: ${text.slice(0, 600)}`);
-  return { response: fromGemini(JSON.parse(text), modelId), modelId, thinkingLevel };
+  const maxAttempts = 3;
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const fetchOptions = { method: "POST", headers, body: JSON.stringify(request), signal: AbortSignal.timeout(TIMEOUT_MS) };
+      if (vertexDispatcher) fetchOptions.dispatcher = vertexDispatcher;
+      let response;
+      try {
+        response = await undiciFetch(url, fetchOptions);
+      } catch (proxyErr) {
+        const proxyMsg = `${proxyErr?.message || ""} ${proxyErr?.cause?.message || ""}`.toLowerCase();
+        if (vertexDispatcher && proxyMsg.includes("econnrefused")) {
+          const directOpts = { method: "POST", headers, body: JSON.stringify(request), signal: AbortSignal.timeout(TIMEOUT_MS) };
+          response = await undiciFetch(url, directOpts);
+        } else {
+          throw proxyErr;
+        }
+      }
+      const text = await response.text();
+      if (!response.ok) {
+        if ((response.status === 502 || response.status === 503 || response.status === 529) && attempt < maxAttempts) {
+          log(`retry attempt=${attempt} model=${modelId} status=${response.status}`);
+          await new Promise((r) => setTimeout(r, 400 * attempt));
+          continue;
+        }
+        throw new Error(`Vertex HTTP ${response.status}: ${text.slice(0, 600)}`);
+      }
+      return { response: fromGemini(JSON.parse(text), modelId), modelId, thinkingLevel };
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts && isRetryableNetworkError(err)) {
+        log(`retry attempt=${attempt} model=${modelId} err=${err?.cause?.message || err?.message || err}`);
+        await new Promise((r) => setTimeout(r, 400 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
 }
 
 const server = http.createServer(async (req, res) => {

@@ -44,21 +44,27 @@ const L0_FORBIDDEN_PATH_PATTERNS = [
   /^[a-z]:\/windows(?:\/|$)/i,
   /^[a-z]:\/program files(?: \(x86\))?(?:\/|$)/i,
   /^[a-z]:\/programdata(?:\/|$)/i,
+  /^[a-z]:\/system volume information(?:\/|$)/i,
   /^\/(?:etc|proc|sys|root|boot|dev)(?:\/|$)/i,
   /\/(?:\.ssh|\.gnupg|\.aws|\.kube|\.azure)(?:\/|$)/i,
   /\/appdata\/local\/(?:google\/chrome|microsoft\/edge|brave-browser)\/user data(?:\/|$)/i,
-  /\/(?:cookies|login data|key4\.db|logins\.json)$/i,
-  /\/(?:\.env|ai-keys\.env|application_default_credentials\.json)$/i,
-  /\.(?:pem|key|p12|pfx|ppk|kdbx)$/i,
+  /\/appdata\/roaming\/mozilla\/firefox\/profiles(?:\/|$)/i,
+  /\/(?:cookies|login data|web data|key4\.db|logins\.json|ntuser\.dat)$/i,
+  /\/(?:\.env(?:\.[a-z0-9_-]+)*|ai-keys\.env|application_default_credentials\.json|[^/]*-token(?:\.[a-z0-9_-]+)*)$/i,
+  /\.(?:pem|key|p12|pfx|ppk|kdbx|token)$/i,
   /\/id_(?:rsa|ed25519|ecdsa)$/i,
 ];
 
 /**
- * Pure deterministic L0 safety classifier for file paths (prevents secret/OS access).
+ * Pure deterministic L0 safety classifier for file paths (prevents secret/OS/UNC/ADS access).
  */
 export function isForbiddenSystemOrSecretPath(rawPath = "") {
-  const s = String(rawPath ?? "").trim().replace(/\\/g, "/");
-  if (!s || s.includes("\0") || /(?:^|\/)\.\.(?:\/|$)/.test(s)) return true;
+  const trimmed = String(rawPath ?? "").trim();
+  if (!trimmed || trimmed.includes("\0")) return true;
+  // Block Windows UNC paths (\\host\share -> SMB/NTLM leak), extended/device paths (\\?\ or \\.\), and NTFS ADS (C:\foo:bar)
+  if (/^(?:\\\\|\/\/)/.test(trimmed) || /^[a-z]:[^:]*:/i.test(trimmed)) return true;
+  const s = trimmed.replace(/\\/g, "/");
+  if (/(?:^|\/)\.\.(?:\/|$)/.test(s)) return true;
   return L0_FORBIDDEN_PATH_PATTERNS.some((re) => re.test(s));
 }
 
